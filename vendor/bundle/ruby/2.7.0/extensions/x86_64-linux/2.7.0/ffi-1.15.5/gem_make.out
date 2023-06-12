@@ -1,0 +1,20 @@
+current directory: /home/biblbrox/Projects/Biblblog/vendor/bundle/ruby/2.7.0/gems/ffi-1.15.5/ext/ffi_c
+/usr/bin/ruby2.7 -I /usr/lib/ruby/vendor_ruby -r ./siteconf20230612-32225-14prjqp.rb extconf.rb
+checking for ffi_prep_closure_loc() in -lffi... yes
+checking for ffi_prep_cif_var()... yes
+checking for ffi_raw_call()... yes
+checking for ffi_prep_raw_closure()... yes
+checking for whether -pthread is accepted as LDFLAGS... yes
+creating extconf.h
+creating Makefile
+
+current directory: /home/biblbrox/Projects/Biblblog/vendor/bundle/ruby/2.7.0/gems/ffi-1.15.5/ext/ffi_c
+make DESTDIR\= clean
+
+current directory: /home/biblbrox/Projects/Biblblog/vendor/bundle/ruby/2.7.0/gems/ffi-1.15.5/ext/ffi_c
+make DESTDIR\=
+compiling AbstractMemory.c
+make: gcc: Permission denied
+make: *** [Makefile:245: AbstractMemory.o] Error 127
+
+make failed, exit code 2

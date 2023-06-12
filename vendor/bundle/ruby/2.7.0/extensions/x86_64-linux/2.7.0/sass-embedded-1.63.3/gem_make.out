@@ -1,0 +1,10 @@
+current directory: /home/biblbrox/Projects/Biblblog/vendor/bundle/ruby/2.7.0/gems/sass-embedded-1.63.3/ext/sass
+/usr/bin/ruby2.7 -I/usr/lib/ruby/vendor_ruby -rrubygems /home/biblbrox/Projects/Biblblog/vendor/bundle/ruby/2.7.0/gems/rake-13.0.6/exe/rake RUBYARCHDIR\=/home/biblbrox/Projects/Biblblog/vendor/bundle/ruby/2.7.0/extensions/x86_64-linux/2.7.0/sass-embedded-1.63.3 RUBYLIBDIR\=/home/biblbrox/Projects/Biblblog/vendor/bundle/ruby/2.7.0/extensions/x86_64-linux/2.7.0/sass-embedded-1.63.3
+fetch https://github.com/sass/dart-sass/releases/download/1.63.3/dart-sass-1.63.3-linux-x64.tar.gz
+mkdir -p .
+tar -vxC . -f dart-sass-1.63.3-linux-x64.tar.gz --no-same-owner --no-same-permissions
+dart-sass/src/LICENSE
+dart-sass/src/dart
+dart-sass/src/sass.snapshot
+dart-sass/sass
+rm dart-sass-1.63.3-linux-x64.tar.gz

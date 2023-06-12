@@ -1,0 +1,16 @@
+current directory: /home/biblbrox/Projects/Biblblog/vendor/bundle/ruby/2.7.0/gems/http_parser.rb-0.8.0/ext/ruby_http_parser
+/usr/bin/ruby2.7 -I /usr/lib/ruby/vendor_ruby -r ./siteconf20230612-32225-1s48oo4.rb extconf.rb
+creating Makefile
+
+current directory: /home/biblbrox/Projects/Biblblog/vendor/bundle/ruby/2.7.0/gems/http_parser.rb-0.8.0/ext/ruby_http_parser
+make DESTDIR\= clean
+
+current directory: /home/biblbrox/Projects/Biblblog/vendor/bundle/ruby/2.7.0/gems/http_parser.rb-0.8.0/ext/ruby_http_parser
+make DESTDIR\=
+compiling ruby_http_parser.c
+compiling ryah_http_parser.c
+linking shared-object ruby_http_parser.so
+make: gcc: Permission denied
+make: *** [Makefile:262: ruby_http_parser.so] Error 127
+
+make failed, exit code 2
