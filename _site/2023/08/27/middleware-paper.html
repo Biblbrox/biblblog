@@ -1,0 +1,340 @@
+<!doctype html>
+<!--
+  Minimal Mistakes Jekyll Theme 4.24.0 by Michael Rose
+  Copyright 2013-2020 Michael Rose - mademistakes.com | @mmistakes
+  Free for personal and commercial use under the MIT license
+  https://github.com/mmistakes/minimal-mistakes/blob/master/LICENSE
+-->
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8">
+
+<!-- begin _includes/seo.html --><title>Middleware Paper - BiblCode</title>
+<meta name="description" content="FastDDS and ros2 node correspondence Author - Kuchkov Aleksey">
+
+
+
+<meta property="og:type" content="article">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="BiblCode">
+<meta property="og:title" content="Middleware Paper">
+<meta property="og:url" content="http://localhost:4000/2023/08/27/middleware-paper.html">
+
+
+  <meta property="og:description" content="FastDDS and ros2 node correspondence Author - Kuchkov Aleksey">
+
+
+
+
+
+
+
+  <meta property="article:published_time" content="2023-08-27T00:00:00+03:00">
+
+
+
+
+
+
+<link rel="canonical" href="http://localhost:4000/2023/08/27/middleware-paper.html">
+
+
+
+
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    
+      "@type": "Person",
+      "name": null,
+      "url": "http://localhost:4000/"
+    
+  }
+</script>
+
+
+
+
+
+
+
+<!-- end _includes/seo.html -->
+
+
+
+  <link href="/feed.xml" type="application/atom+xml" rel="alternate" title="BiblCode Feed">
+
+
+<!-- https://t.co/dKP3o1e -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5/css/all.min.css"></noscript>
+
+
+
+    <!-- start custom head snippets -->
+
+<!-- insert favicons. use https://realfavicongenerator.net/ -->
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body class="layout--splash landing dark-theme">
+    <nav class="skip-links">
+  <ul>
+    <li><a href="#site-nav" class="screen-reader-shortcut">Skip to primary navigation</a></li>
+    <li><a href="#main" class="screen-reader-shortcut">Skip to content</a></li>
+    <li><a href="#footer" class="screen-reader-shortcut">Skip to footer</a></li>
+  </ul>
+</nav>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+
+    
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        
+        <a class="site-title" href="/">
+          BiblCode
+          
+        </a>
+        <ul class="visible-links"><li class="masthead__menu-item">
+              <a href="/about/">About</a>
+            </li><li class="masthead__menu-item">
+              <a href="/">Posts</a>
+            </li></ul>
+        
+        <button class="greedy-nav__toggle hidden" type="button">
+          <span class="visually-hidden">Toggle menu</span>
+          <div class="navicon"></div>
+        </button>
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+
+    <div class="initial-content">
+      
+
+<div id="main" role="main">
+  <article class="splash" itemscope itemtype="https://schema.org/CreativeWork">
+    <meta itemprop="headline" content="Middleware Paper">
+    <meta itemprop="description" content="FastDDS and ros2 node correspondenceAuthor - Kuchkov Aleksey">
+    <meta itemprop="datePublished" content="2023-08-27T00:00:00+03:00">
+    
+
+    <section class="page__content" itemprop="text">
+      <h1 id="fastdds-and-ros2-node-correspondence">FastDDS and ros2 node correspondence</h1>
+<p><strong>Author</strong> - Kuchkov Aleksey</p>
+
+<p><strong>Created On</strong> - 27.08.2023</p>
+
+<h2 id="introduction">Introduction</h2>
+<p>Hello everyone. I have a deal with ROS/ROS2 very often due to my professional needs and hobby interests. My latest hobby project is tightly coupled with such low-level tools as ROS2 middlewares, which represent internal implementation of ROS nodes, topics, subscribers, publishers, services, etc. In most cases, it is unnecessary to think about such low-level features being satisfied with ROS api/cli only. Having said that, sometimes you may run into obstacles due to ROS2 limitation, especially in topology discovering and diagnostic. For example, if you want to find the IP address of the machine ROS2 node runs on, you may struggle with CLI limitations.</p>
+
+<p>I had a struggle with FastDDS for a while, and I want to share some of the knowledge I had obtained during the hard research process. Maybe it could help someone to save time a little bit.</p>
+
+<p>ROS2 uses FastDDS middleware by default, so this note is about FastDDS although all of the middlewares implement DDS standard more-less. Therefore, the knowledge about FastDDS concerns is not only applicable to eProsima implementation but to all of the middlewares, in terms of DDS standard at least.</p>
+
+<p>Firstly, it is unnecessary to get an idea about what the middleware serve for in ROS ecosystem.  The main task of a middleware is to provide an internal implementation of ros2 entities. Due to a variety of the platforms in which ros2 can be run on, it is necessary to have multiple implementations with transparent internal switching mechanism. For example, eProsima FastDDS is the default ros2 middleware, while there are such implementations as Eclipse Cyclone DDS, Connext DDS, GurumDDS and Micro XRCE-DDS (for MicroROS).</p>
+
+<p>There is some mess about the RTPS and DDS terminology. Although they are often used together, they represent the different layers in a network. DDS stands for Data Distribution Service that represents publisher-subscriber paradigm with rich type system and QoS (Quality of Service) features built-in. The RTPS (also known as <a href="https://www.omg.org/spec/DDSI-RTPS/">DDSI-RTPS</a>) has the goal is to provide network and IPC communication at lower level. While the most DDS implementations use RTPS internally for delivering messages, this is not always the case. Furthermore, you can use bare RTPS without any typing system, but you do not have to do such clever tricks mostly.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center"><img src="/assets/DDS_concept.svg" alt="DDS_concept.svg" /></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: center"><em>FastDDS network example</em></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="discovering-dds-network-using-fastdds-c-api">Discovering DDS network using FastDDS C++ API</h2>
+<p>FastDDS has it own mechanism to discover participants, subscribers, and publishers. We can use it with inhereting the class <code class="language-plaintext highlighter-rouge">eprosima::FastDDS::dds::DomainParticipantListener</code> and implementing the methods <code class="language-plaintext highlighter-rouge">on_participant_discovery</code>, <code class="language-plaintext highlighter-rouge">on_subscriber_discovery</code>, <code class="language-plaintext highlighter-rouge">on_publisher_discovery</code> and <code class="language-plaintext highlighter-rouge">on_type_discovery</code>.</p>
+
+<p>Each of these methods has two arguments: a participant, which a discovered event belongs to, and information about an event.</p>
+
+<p><strong>on_participant_discovery</strong> called when a new participant appeared in the network. Keep in mind that one participant may hold multiple ros2 nodes depending on which context these nodes were created. Nodes created in a single context will be stored in a single participant, whereas nodes in different contexts will be stored in separate participants.</p>
+
+<p><strong>on_subscriber_discovery</strong> and <strong>on_publisher_discovery</strong> called when a new writer or reader discovered.</p>
+
+<p><strong>on_type_discovery</strong> called when a new type is discovered.</p>
+
+<h2 id="dds-ros2-correspondence">DDS-ROS2 correspondence</h2>
+<p>ROS2 uses nodes as the main objects that hold subscribers, publishers, and other entities inside. FastDDS, on the other hand, doesn’t have such type of objects. Instead, it uses participants as the reader/writer(publisher/subscriber) holders, which may cause some confusion due to the similarity of terms. But there is the caution - there is no direct correspondence between ROS2 nodes and FastDDS participants since Foxy. So, a single participant may hold multiple ROS2 nodes. Moreover, there is no such thing as ROS2 Context in FastDDS. The table below is taken from ROS2 documentation and represents correspondence between ROS2 and FastDDS.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>ROS entity</th>
+      <th>Fast DDS entity since Foxy</th>
+      <th>Fast DDS entity in Eloquent &amp; below</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Context</td>
+      <td>Participant</td>
+      <td>Not DDS direct mapping</td>
+    </tr>
+    <tr>
+      <td>Node</td>
+      <td>Not DDS direct mapping</td>
+      <td>Participant</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>What entities we can relay on are publishers and subscribers. So, we have to find some mechanism to find ros2 entity using only publishers and subscribers. We can relay on the fact that every ROS2 node has a built-in topic named /rosout, which is used for logging purposes. So, having found a topic gid, we can find the corresponding topic using ROS2 api. Thus, obtaining a node name becomes an easy goal.
+In order to find a topic GID, we may use the method guid() of info object in <code class="language-plaintext highlighter-rouge">eprosima::fastrtps::rtps::WriterDiscoveryInfo</code> argument in <code class="language-plaintext highlighter-rouge">on_publisher_discovery</code>. Due to the fact that every node has a single <code class="language-plaintext highlighter-rouge">/rosout</code> topic, we can make a condition to filter other publishers.
+The code below demonstrates the general idea:</p>
+<div class="language-c++ highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span> <span class="n">DiscoveryDomainParticipantListener</span><span class="o">::</span><span class="n">on_publisher_discovery</span><span class="p">(</span>
+    <span class="n">eprosima</span><span class="o">::</span><span class="n">FastDDS</span><span class="o">::</span><span class="n">dds</span><span class="o">::</span><span class="n">DomainParticipant</span> <span class="o">*</span><span class="n">participant</span><span class="p">,</span>
+    <span class="n">eprosima</span><span class="o">::</span><span class="n">fastrtps</span><span class="o">::</span><span class="n">rtps</span><span class="o">::</span><span class="n">WriterDiscoveryInfo</span> <span class="o">&amp;&amp;</span><span class="n">info</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span><span class="p">(</span><span class="n">participant</span><span class="p">);</span>
+  <span class="k">switch</span> <span class="p">(</span><span class="n">info</span><span class="p">.</span><span class="n">status</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">case</span> <span class="n">eprosima</span><span class="o">::</span><span class="n">fastrtps</span><span class="o">::</span><span class="n">rtps</span><span class="o">::</span><span class="n">WriterDiscoveryInfo</span><span class="o">::</span><span class="n">DISCOVERED_WRITER</span><span class="p">:</span>
+    <span class="cm">/* Process the case when a new publisher was found in the domain */</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">info</span><span class="p">.</span><span class="n">info</span><span class="p">.</span><span class="n">topicName</span><span class="p">()</span> <span class="o">==</span> <span class="s">"rt/rosout"</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// ...</span>
+      <span class="c1">// Extract GID</span>
+      <span class="c1">// ...</span>
+    <span class="p">}</span>
+    <span class="k">break</span><span class="p">;</span>
+  <span class="k">case</span> <span class="n">eprosima</span><span class="o">::</span><span class="n">fastrtps</span><span class="o">::</span><span class="n">rtps</span><span class="o">::</span><span class="n">WriterDiscoveryInfo</span><span class="o">::</span><span class="n">CHANGED_QOS_WRITER</span><span class="p">:</span>
+    <span class="cm">/* Process the case when a publisher changed its QOS */</span>
+    <span class="k">break</span><span class="p">;</span>
+  <span class="k">case</span> <span class="n">eprosima</span><span class="o">::</span><span class="n">fastrtps</span><span class="o">::</span><span class="n">rtps</span><span class="o">::</span><span class="n">WriterDiscoveryInfo</span><span class="o">::</span><span class="n">REMOVED_WRITER</span><span class="p">:</span>
+    <span class="cm">/* Process the case when a publisher was removed from the domain */</span>
+    <span class="k">break</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+<p>So, you may notice that FastDDS topic corresponds to the exact topic in ros2 except the “rt” prefix. The primary language of my project is Rust, so I had to write C wrappers in order to use FastDDS capabilities. But the general idea remains the same, so you may adapt the code provided below to C++ without any problems. The process of finding the exact node name with only the topic name known may look like:</p>
+<div class="language-rust highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="k">pub</span> <span class="k">fn</span> <span class="nf">node_name_by_gid</span><span class="p">(</span><span class="o">&amp;</span><span class="k">self</span><span class="p">,</span> <span class="n">topic_name</span><span class="p">:</span> <span class="nb">String</span><span class="p">,</span> <span class="n">gid_search</span><span class="p">:</span> <span class="nb">String</span><span class="p">)</span> <span class="k">-&gt;</span> <span class="nb">String</span> <span class="p">{</span>
+    <span class="k">let</span> <span class="n">data_bytes</span> <span class="o">=</span> <span class="nn">Command</span><span class="p">::</span><span class="nf">new</span><span class="p">(</span><span class="s">"ros2"</span><span class="p">)</span>
+        <span class="nf">.arg</span><span class="p">(</span><span class="s">"topic"</span><span class="p">)</span>
+        <span class="nf">.arg</span><span class="p">(</span><span class="s">"info"</span><span class="p">)</span>
+        <span class="nf">.arg</span><span class="p">(</span><span class="n">topic_name</span><span class="p">)</span>
+        <span class="nf">.arg</span><span class="p">(</span><span class="s">"--verbose"</span><span class="p">)</span>
+        <span class="nf">.output</span><span class="p">()</span>
+        <span class="nf">.expect</span><span class="p">(</span><span class="s">"failed to execute process"</span><span class="p">);</span>
+
+    <span class="k">let</span> <span class="n">re</span> <span class="o">=</span> <span class="nn">RegexMatcher</span><span class="p">::</span><span class="nf">new</span><span class="p">(</span><span class="s">r"Node name:"</span><span class="p">)</span><span class="nf">.unwrap</span><span class="p">();</span>
+    <span class="k">let</span> <span class="k">mut</span> <span class="n">searcher</span> <span class="o">=</span> <span class="nn">SearcherBuilder</span><span class="p">::</span><span class="nf">new</span><span class="p">()</span>
+        <span class="nf">.before_context</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="nf">.after_context</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+        <span class="nf">.build</span><span class="p">();</span>
+
+    <span class="k">let</span> <span class="k">mut</span> <span class="n">matches</span><span class="p">:</span> <span class="nb">Vec</span><span class="o">&lt;</span><span class="p">(</span><span class="nb">usize</span><span class="p">,</span> <span class="nb">String</span><span class="p">)</span><span class="o">&gt;</span> <span class="o">=</span> <span class="nd">vec!</span><span class="p">[];</span>
+        <span class="n">searcher</span><span class="nf">.search_slice</span><span class="p">(</span>
+        <span class="o">&amp;</span><span class="n">re</span><span class="p">,</span>
+        <span class="n">data_bytes</span><span class="py">.stdout</span><span class="nf">.as_slice</span><span class="p">(),</span>
+        <span class="nf">UTF8</span><span class="p">(|</span><span class="n">lnum</span><span class="p">,</span> <span class="n">line</span><span class="p">|</span> <span class="p">{</span>
+            <span class="k">let</span> <span class="n">mymatch</span> <span class="o">=</span> <span class="n">re</span><span class="nf">.find</span><span class="p">(</span><span class="n">line</span><span class="nf">.as_bytes</span><span class="p">())</span><span class="o">?</span><span class="nf">.unwrap</span><span class="p">();</span>
+            <span class="n">matches</span><span class="nf">.push</span><span class="p">((</span><span class="n">lnum</span><span class="nf">.to_usize</span><span class="p">(),</span> <span class="n">line</span><span class="p">[</span><span class="n">mymatch</span><span class="p">]</span><span class="nf">.to_string</span><span class="p">()));</span>
+            <span class="nf">Ok</span><span class="p">(</span><span class="k">true</span><span class="p">)</span>
+        <span class="p">}),</span>
+    <span class="p">)</span><span class="nf">.unwrap</span><span class="p">();</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span> <span class="n">in</span> <span class="n">matches</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="n">line</span><span class="nf">.starts_with</span><span class="p">(</span><span class="s">"GID: "</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">let</span> <span class="n">gid</span> <span class="o">=</span> <span class="n">line</span><span class="nf">.split</span><span class="p">(</span><span class="s">": "</span><span class="p">)</span><span class="py">.collect</span><span class="p">::</span><span class="o">&lt;</span><span class="nb">Vec</span><span class="o">&lt;&amp;</span><span class="nb">str</span><span class="o">&gt;&gt;</span><span class="p">()[</span><span class="mi">1</span><span class="p">];</span>
+            <span class="k">if</span> <span class="n">gid</span><span class="nf">.starts_with</span><span class="p">(</span><span class="n">gid_search</span><span class="nf">.as_str</span><span class="p">())</span> <span class="p">{</span>
+                <span class="k">let</span> <span class="p">(</span><span class="mi">_</span><span class="p">,</span> <span class="n">node_name_line</span><span class="p">)</span> <span class="o">=</span> <span class="n">matches</span><span class="nf">.iter</span><span class="p">()</span><span class="nf">.find</span><span class="p">(|(</span><span class="n">lnum</span><span class="p">,</span> <span class="n">line</span><span class="p">)|</span> <span class="o">*</span><span class="n">lnum</span> <span class="o">==</span> <span class="n">num</span> <span class="o">-</span> <span class="mi">4</span><span class="p">)</span><span class="nf">.unwrap</span><span class="p">();</span>
+                <span class="k">let</span> <span class="n">node_name</span> <span class="o">=</span> <span class="n">node_name_line</span><span class="nf">.split</span><span class="p">(</span><span class="s">": "</span><span class="p">)</span><span class="py">.collect</span><span class="p">::</span><span class="o">&lt;</span><span class="nb">Vec</span><span class="o">&lt;&amp;</span><span class="nb">str</span><span class="o">&gt;&gt;</span><span class="p">()[</span><span class="mi">1</span><span class="p">];</span>
+                <span class="k">return</span> <span class="n">node_name</span><span class="nf">.to_string</span><span class="p">();</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="s">""</span><span class="nf">.to_string</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>The most easiest way to get info about ROS2 topics (but not the most effective) is to use ROS2 cli as I have done. This is a simplified version of code used in my hobby project. So, I have to rewrite it in a more sophisticated way in the future, but for this moment, that is enough because it works pretty well.</p>
+
+<p>Also, you have to use the same Domain ID in each program and terminal, of course.</p>
+
+<h2 id="cautions">Cautions</h2>
+<p>Besides sourcing ros2 environment with the command <code class="language-plaintext highlighter-rouge">sh /opt/ros/{version}/setup.sh</code> you have to set the environment variable ROS_DISCOVERY_SERVER with the address of the target the server runs on. In the case of localhost, it may look like this:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">export </span><span class="nv">ROS_DISCOVERY_SERVER</span><span class="o">=</span><span class="s2">"127.0.0.1:11811"</span>
+</code></pre></div></div>
+<p>Of course, you have to specify the same address and port when you create a discovery server.</p>
+
+<h2 id="conclusion">Conclusion</h2>
+<p>To sum up, despite the fact of a lack of information about a node name in FastDDS middleware due to participant reusing for multiple nodes, there is a way to obtain a node name from topic (Writer or Reader) gid. With the given name, we may extract useful information from FastDDS writer or reader and then use it on the ROS2 side.</p>
+
+<p>By the way, FastDDS has a great <a href="https://fast-dds.docs.eprosima.com/en/latest/">documentation</a> with many examples, so if you want to read more don’t hesitate to look into.</p>
+
+<h1 id="useful-links">Useful links</h1>
+<ol>
+  <li>FastDDS docs: https://fast-dds.docs.eprosima.com/en/latest/</li>
+  <li>Enabling discovery server in ros2: https://fast-dds.docs.eprosima.com/en/latest/FastDDS/ros2/ros2.html</li>
+  <li>Using FastDDS features with ROS2: https://docs.ros.org/en/iron/Tutorials/Advanced/FastDDS-Configuration.html</li>
+  <li>An example of implementing listener for FastDDS discovery server: https://fast-dds.docs.eprosima.com/en/latest/fastdds/discovery/disc_callbacks.html</li>
+</ol>
+
+    </section>
+  </article>
+</div>
+
+    </div>
+
+    
+
+    <div id="footer" class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+
+<!-- end custom footer snippets -->
+        <div class="page__footer-follow">
+  <ul class="social-icons">
+    
+
+    
+
+    
+      <li><a href="/feed.xml"><i class="fas fa-fw fa-rss-square" aria-hidden="true"></i> Feed</a></li>
+    
+  </ul>
+</div>
+
+<div class="page__footer-copyright">&copy; 2023 BiblCode. Powered by <a href="https://jekyllrb.com" rel="nofollow">Jekyll</a> &amp; <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">Minimal Mistakes</a>.</div>
+
+      </footer>
+    </div>
+
+    
+  <script src="/assets/js/main.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+  </body>
+</html>
