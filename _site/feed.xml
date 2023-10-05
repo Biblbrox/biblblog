@@ -1,7 +1,195 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.9.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2023-08-27T11:10:34+03:00</updated><id>/feed.xml</id><title type="html">Beware of Ohkvuck Aykseel</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description. #baseurl: &quot;&quot; # the subpath of your site, e.g. /blog</subtitle><entry><title type="html">Middleware Paper</title><link href="/2023/08/27/middleware-paper.html" rel="alternate" type="text/html" title="Middleware Paper" /><published>2023-08-27T00:00:00+03:00</published><updated>2023-08-27T00:00:00+03:00</updated><id>/2023/08/27/middleware-paper</id><content type="html" xml:base="/2023/08/27/middleware-paper.html">&lt;h1 id=&quot;fastdds-and-ros2-node-correspondence&quot;&gt;FastDDS and ros2 node correspondence&lt;/h1&gt;
-&lt;p&gt;&lt;strong&gt;Author&lt;/strong&gt; - Kuchkov Aleksey&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.9.3">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2023-10-06T01:24:12+03:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Beware of Ohkvuck Aykseel</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description. #baseurl: &quot;&quot; # the subpath of your site, e.g. /blog</subtitle><entry><title type="html">DDS discovery tool for ROS2 ecosystem</title><link href="http://localhost:4000/2023/10/03/DDS-discovery-tool-for-ROS2-ecosystem.html" rel="alternate" type="text/html" title="DDS discovery tool for ROS2 ecosystem" /><published>2023-10-03T00:00:00+03:00</published><updated>2023-10-03T00:00:00+03:00</updated><id>http://localhost:4000/2023/10/03/DDS-discovery-tool-for-ROS2-ecosystem</id><content type="html" xml:base="http://localhost:4000/2023/10/03/DDS-discovery-tool-for-ROS2-ecosystem.html">&lt;p&gt;&lt;strong&gt;Author&lt;/strong&gt; - Kuchkov Aleksey&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;Created On&lt;/strong&gt; - 27.08.2023&lt;/p&gt;
+&lt;h1 id=&quot;introduction&quot;&gt;Introduction&lt;/h1&gt;
+&lt;p&gt;Hello everyone, I want to introduce my hobby project - ROS2 Monitor. The main goal of the project is to provide a detailed information about the ROS2 ecosystem for introspection purposes. The detail information collected with FastDDS middleware (there is the plans to extend information sources) and ROS2 CLI tools. The main benefit of of direct usage the api of middleware is the possibility to obtain details that unaccessible with standard ROS2 CLI.&lt;/p&gt;
+
+&lt;p&gt;To sum up, the program at the current moment is more like a concept (or minimal example) rather than ready to use solution. The main idea is to get feedback about the viability of this approach. And the another goal I am leading to is to find the people who may involve into developing process along with me because the task itself contains a lot of details that can be a hardly implemented single alone.&lt;/p&gt;
+
+&lt;p&gt;The program has client server architecture where the server part is implemented as a system daemon written in Rust, and the client is the C++ gui application. The server api can be accessed through JSON command description written to the daemon’s socket file (Unix Domain Socket) - /tmp/ros2monitor.sock. Thus, any program which implements the JSON api may become a client. The examples of information you may obtain from the daemon:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Information about the host ROS2 node running on (IP, hostname);&lt;/li&gt;
+  &lt;li&gt;Detailed QOS info, like message transport type: UDPv4, TCPv4, UDPv6, TCPv6, SHM;&lt;/li&gt;
+  &lt;li&gt;Lifecycle node control: configure, activate, deactivate, cleanup, shutdown (under development)&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The tool is supposed to be used with ROS2 ecosystem without any hardware manufacturer lock to make the possibility for nodes to be running on completely different devices in the same network.&lt;/p&gt;
+
+&lt;h1 id=&quot;inspiration-sources&quot;&gt;Inspiration sources&lt;/h1&gt;
+&lt;p&gt;As the main inspiration source, I took the Nvidia SDK, which includes the program with the name Graph Composer. It allows you to create computer vision application with a graphical approach (via graph editing). But the main goals of my prototype are slightly different. They include:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Provide the topology observation tool with deep traffic data analysis for ROS2 ecosystem;&lt;/li&gt;
+  &lt;li&gt;Give a possibility to debug ROS2 nodes with their’s topics visualization in real-time;&lt;/li&gt;
+  &lt;li&gt;Provide a tool for lifecycle node control;&lt;/li&gt;
+  &lt;li&gt;Grant a way for filesystem package observing with corresponding detailed information.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;So, my decision was to implement an architecture that would allows to use multiple types of clients, including web ones. The picture below demonstrates this idea:
+&lt;img src=&quot;/assets/ros2monitor_scheme.webp&quot; alt=&quot;./ros2monitor_scheme.svg&quot; /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;the-daemon-architecture&quot;&gt;The daemon architecture&lt;/h1&gt;
+&lt;p&gt;The daemon has several configuration flags that determine it’s behavior. At the current moment, there is only two possible variants. The first one, uses the bare ROS2 CLI.
+The another uses FastDDS discoverer server. Thus, considering the fact that FastDDS is the default middleware implementation, the combination of ROS2 CLI and FastDDS server covers the major part of needs. Having said that, there is a plan to implement the micro-ros support in the future.&lt;/p&gt;
+
+&lt;p&gt;As being said, the daemon has communication channel through Unix Domain Sockets with JSON requests. The typical request looks like:&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-JSON&quot;&gt;{ 
+    &quot;command&quot;: &quot;state&quot;, 
+    &quot;arguments&quot;: [] 
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;with the following response:&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-JSON&quot;&gt;{
+   &quot;nodes&quot;:[
+      {
+         &quot;action_clients&quot;:[],
+         &quot;action_servers&quot;:[],
+         &quot;host&quot;:{
+            &quot;ip&quot;:&quot;192.168.0.46&quot;,
+            &quot;name&quot;:&quot;raspberrypi.Dlink&quot;
+         },
+         &quot;is_lifecycle&quot;:false,
+         &quot;name&quot;:&quot;turtlesim&quot;,
+         &quot;package_name&quot;:&quot;&quot;,
+         &quot;publishers&quot;:[
+            {
+               &quot;guid&quot;:&quot;01.0f.04.aa.41.2c.03.e1.01.00.00.00&quot;,
+               &quot;host&quot;:{
+                  &quot;ip&quot;:&quot;192.168.0.46&quot;,
+                  &quot;name&quot;:&quot;raspberrypi.Dlink&quot;
+               },
+               &quot;node_name&quot;:&quot;turtlesim&quot;,
+               &quot;topic_name&quot;:&quot;ros_discovery_info&quot;,
+               &quot;topic_type&quot;:&quot;rmw_dds_common::msg::dds_::ParticipantEntitiesInfo_&quot;
+            },
+            {
+               &quot;guid&quot;:&quot;01.0f.04.aa.41.2c.03.e1.01.00.00.00&quot;,
+               &quot;host&quot;:{
+                  &quot;ip&quot;:&quot;192.168.0.46&quot;,
+                  &quot;name&quot;:&quot;raspberrypi.Dlink&quot;
+               },
+               &quot;node_name&quot;:&quot;turtlesim&quot;,
+               &quot;topic_name&quot;:&quot;parameter_events&quot;,
+               &quot;topic_type&quot;:&quot;rcl_interfaces::msg::dds_::ParameterEvent_&quot;
+            },
+            {
+               &quot;guid&quot;:&quot;01.0f.04.aa.41.2c.03.e1.01.00.00.00&quot;,
+               &quot;host&quot;:{
+                  &quot;ip&quot;:&quot;192.168.0.46&quot;,
+                  &quot;name&quot;:&quot;raspberrypi.Dlink&quot;
+               },
+               &quot;node_name&quot;:&quot;turtlesim&quot;,
+               &quot;topic_name&quot;:&quot;clearReply&quot;,
+               &quot;topic_type&quot;:&quot;std_srvs::srv::dds_::Empty_Response_&quot;
+            },
+            {
+               &quot;guid&quot;:&quot;01.0f.04.aa.41.2c.03.e1.01.00.00.00&quot;,
+               &quot;host&quot;:{
+                  &quot;ip&quot;:&quot;192.168.0.46&quot;,
+                  &quot;name&quot;:&quot;raspberrypi.Dlink&quot;
+               },
+               &quot;node_name&quot;:&quot;turtlesim&quot;,
+               &quot;topic_name&quot;:&quot;spawnReply&quot;,
+               &quot;topic_type&quot;:&quot;turtlesim::srv::dds_::Spawn_Response_&quot;
+            },
+            {
+               &quot;guid&quot;:&quot;01.0f.04.aa.41.2c.03.e1.01.00.00.00&quot;,
+               &quot;host&quot;:{
+                  &quot;ip&quot;:&quot;192.168.0.46&quot;,
+                  &quot;name&quot;:&quot;raspberrypi.Dlink&quot;
+               },
+               &quot;node_name&quot;:&quot;&quot;,
+               &quot;topic_name&quot;:&quot;killReply&quot;,
+               &quot;topic_type&quot;:&quot;turtlesim::srv::dds_::Kill_Response_&quot;
+            },
+            {
+               &quot;guid&quot;:&quot;01.0f.04.aa.41.2c.03.e1.01.00.00.00&quot;,
+               &quot;host&quot;:{
+                  &quot;ip&quot;:&quot;192.168.0.46&quot;,
+                  &quot;name&quot;:&quot;raspberrypi.Dlink&quot;
+               },
+               &quot;node_name&quot;:&quot;turtlesim&quot;,
+               &quot;topic_name&quot;:&quot;turtle1/set_penReply&quot;,
+               &quot;topic_type&quot;:&quot;turtlesim::srv::dds_::SetPen_Response_&quot;
+            }
+         ],
+         &quot;service_clients&quot;:[],
+         &quot;service_servers&quot;:[],
+         &quot;state&quot;:&quot;Unconfigured&quot;,
+         &quot;subscribers&quot;:[]
+      },
+      {
+         &quot;action_clients&quot;:[],
+         &quot;action_servers&quot;:[],
+         &quot;host&quot;:{
+            &quot;ip&quot;:&quot;192.168.0.46&quot;,
+            &quot;name&quot;:&quot;raspberrypi.Dlink&quot;
+         },
+         &quot;is_lifecycle&quot;:false,
+         &quot;name&quot;:&quot;turtle_teleop_key&quot;,
+         &quot;package_name&quot;:&quot;&quot;,
+         &quot;publishers&quot;:[
+            {
+               &quot;guid&quot;:&quot;01.0f.04.aa.41.2c.03.e1.01.00.00.00&quot;,
+               &quot;host&quot;:{
+                  &quot;ip&quot;:&quot;192.168.0.46&quot;,
+                  &quot;name&quot;:&quot;raspberrypi.Dlink&quot;
+               },
+               &quot;node_name&quot;:&quot;turtle_teleop_key&quot;,
+               &quot;topic_name&quot;:&quot;turtle1/pose&quot;,
+               &quot;topic_type&quot;:&quot;turtlesim::msg::dds_::Pose_&quot;
+            },
+            {
+               &quot;guid&quot;:&quot;01.0f.04.aa.41.2c.03.e1.01.00.00.00&quot;,
+               &quot;host&quot;:{
+                  &quot;ip&quot;:&quot;192.168.0.46&quot;,
+                  &quot;name&quot;:&quot;raspberrypi.Dlink&quot;
+               },
+               &quot;node_name&quot;:&quot;turtle_teleop_key&quot;,
+               &quot;topic_name&quot;:&quot;turtle1/color_sensor&quot;,
+               &quot;topic_type&quot;:&quot;turtlesim::msg::dds_::Color_&quot;
+            }
+         ],
+         &quot;service_clients&quot;:[],
+         &quot;service_servers&quot;:[],
+         &quot;state&quot;:&quot;Unconfigured&quot;,
+         &quot;subscribers&quot;:[]
+      }
+   ],
+   &quot;packages&quot;:[],
+   &quot;topics&quot;:[]
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;The daemon’s response contains information about two nodes: turtlesim and turtle_teleop_key running on the Raspberry Pi host in the same network.&lt;/p&gt;
+&lt;h1 id=&quot;the-client&quot;&gt;The client&lt;/h1&gt;
+&lt;p&gt;The client is written using C++ with Qt and QML. I have chosen these technologies as closest to me. The main task of the client is to provide a user graphical user interface for communicating with the daemon. The client implementation uses Asio library for talking to the daemon. The images below demonstrate the UI of the client:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/client_ui3.png&quot; alt=&quot;ui_client&quot; /&gt;
+On the image above you can find several key elements:&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;Graph area. It is the field where nodes rendered with their topic communication topology;&lt;/li&gt;
+  &lt;li&gt;Visualization area. This place is being used for visualizing topic data in real time;&lt;/li&gt;
+  &lt;li&gt;Topic list area. It contains all of the topics in the considered domain id;&lt;/li&gt;
+  &lt;li&gt;Node observer. Used to show currently running nodes in domain id;&lt;/li&gt;
+  &lt;li&gt;Package observer. Contains filesystem ROS2 packages in specific workspace.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;One of the major task of the client is the topic visualization feature. To open the visualization widget, you have to click to the plus button near the corresponding topic name on the topic list widget (shown with number 3)&lt;/p&gt;
+
+&lt;p&gt;On the proposed video, you can observe the example of the point cloud topic visualization (sensor_msgs::msg::PointCloud2).&lt;/p&gt;
+&lt;iframe width=&quot;420&quot; height=&quot;315&quot; src=&quot;/assets/Video_demo.mp4&quot; frameborder=&quot;0&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;h1 id=&quot;restrictions&quot;&gt;Restrictions&lt;/h1&gt;
+&lt;p&gt;At the current moment, there are many features not yet implemented:
+Visualization works correctly with a single publisher per topic only;&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Parameter customizations (like domain id, server ip, server port) are hardcoded;&lt;/li&gt;
+  &lt;li&gt;It isn’t possible to save the current workspace to text file (in plans);&lt;/li&gt;
+  &lt;li&gt;And another dozens of bugs that I’m fixing little by little.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1 id=&quot;development-roadmap&quot;&gt;Development roadmap&lt;/h1&gt;
+&lt;p&gt;First of all, I want to stabilize the declared features to make them work properly. There is a lot of work with lifecycle node controlling, optimizing the discovery process, and topic visualization. The main goal is to establish the lifecycle node controlling with topic visualization for most widespread types.&lt;/p&gt;
+
+&lt;p&gt;Another goal is to implement the feature for workspace saving into text files and loading workspaces from these files and some sort of node templates. It can be done without huge efforts because the daemon itself uses JSON representation for ROS2 nodes internally. Node templates, in their turn, requires a little more work to have done due to the requirement of writing some wrappers for nodes located in the user’s filesystem. These wrappers, having wrote once, would be used as the templates for nodes which perform particular type of task, like object detection, image preprocessing, data visualization, to name a few with minimum amount of the code written by program’s user.&lt;/p&gt;</content><author><name></name></author><summary type="html">Author - Kuchkov Aleksey</summary><media:thumbnail xmlns:media="http://search.yahoo.com/mrss/" url="http://localhost:4000/assets/logo.jpeg" /><media:content medium="image" url="http://localhost:4000/assets/logo.jpeg" xmlns:media="http://search.yahoo.com/mrss/" /></entry><entry><title type="html">DDS middlewares and their correspondence with ROS2 entities</title><link href="http://localhost:4000/2023/08/27/middleware-paper.html" rel="alternate" type="text/html" title="DDS middlewares and their correspondence with ROS2 entities" /><published>2023-08-27T00:00:00+03:00</published><updated>2023-08-27T00:00:00+03:00</updated><id>http://localhost:4000/2023/08/27/middleware-paper</id><content type="html" xml:base="http://localhost:4000/2023/08/27/middleware-paper.html">&lt;p&gt;&lt;strong&gt;Author&lt;/strong&gt; - Kuchkov Aleksey&lt;/p&gt;
 
 &lt;h2 id=&quot;introduction&quot;&gt;Introduction&lt;/h2&gt;
 &lt;p&gt;Hello everyone. I have a deal with ROS/ROS2 very often due to my professional needs and hobby interests. My latest hobby project is tightly coupled with such low-level tools as ROS2 middlewares, which represent internal implementation of ROS nodes, topics, subscribers, publishers, services, etc. In most cases, it is unnecessary to think about such low-level features being satisfied with ROS api/cli only. Having said that, sometimes you may run into obstacles due to ROS2 limitation, especially in topology discovering and diagnostic. For example, if you want to find the IP address of the machine ROS2 node runs on, you may struggle with CLI limitations.&lt;/p&gt;
@@ -151,4 +339,4 @@ The code below demonstrates the general idea:&lt;/p&gt;
   &lt;li&gt;Enabling discovery server in ros2: https://fast-dds.docs.eprosima.com/en/latest/FastDDS/ros2/ros2.html&lt;/li&gt;
   &lt;li&gt;Using FastDDS features with ROS2: https://docs.ros.org/en/iron/Tutorials/Advanced/FastDDS-Configuration.html&lt;/li&gt;
   &lt;li&gt;An example of implementing listener for FastDDS discovery server: https://fast-dds.docs.eprosima.com/en/latest/fastdds/discovery/disc_callbacks.html&lt;/li&gt;
-&lt;/ol&gt;</content><author><name></name></author><summary type="html">FastDDS and ros2 node correspondence Author - Kuchkov Aleksey</summary></entry></feed>
+&lt;/ol&gt;</content><author><name></name></author><summary type="html">Author - Kuchkov Aleksey</summary><media:thumbnail xmlns:media="http://search.yahoo.com/mrss/" url="http://localhost:4000/assets/logos/dds_logo.jpg" /><media:content medium="image" url="http://localhost:4000/assets/logos/dds_logo.jpg" xmlns:media="http://search.yahoo.com/mrss/" /></entry></feed>

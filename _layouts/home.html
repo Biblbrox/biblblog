@@ -1,0 +1,40 @@
+---
+layout: archive
+---
+
+{{ content }}
+
+<h3 class="archive__subtitle">{{ site.data.ui-text[site.locale].recent_posts | default: "Recent Posts" }}</h3>
+
+{% if paginator %}
+{% assign posts = paginator.posts %}
+{% else %}
+{% assign posts = site.posts %}
+{% endif %}
+
+{% assign entries_layout = page.entries_layout | default: 'list' %}
+<div class="entries-{{ entries_layout }}">
+    {%- for post in site.posts -%}
+    <li  style="list-style-type:none;">
+        <h3>
+            <a class="post-link" href="{{ post.url | relative_url }}">
+                {{ post.title | escape }}
+            </a>
+        </h3>
+        {%- assign date_format = site.minima.date_format | default: "%b %-d, %Y" -%}
+        <span class="post-meta">{{ post.date | date: date_format }}</span>
+        <br>
+        {%- if site.show_excerpts -%}
+        {{ post.excerpt }}
+        {%- endif -%}
+        {%- if post.image -%}
+        <img src="{{- post.image | relative_url -}}" alt="" style="height:256px;">
+        {%- else -%}
+        {%- assign postImage = "/assets/placeholder.png" -%}
+        <img src="{{- postImage | relative_url -}}" alt="" style="height:256px;">
+        {%- endif -%}
+    </li>
+    {%- endfor -%} 
+</div>
+
+{% include paginator.html %}

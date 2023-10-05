@@ -1,15 +1,13 @@
 ﻿---
-layout: splash
+layout: post
 classes:
   - landing
   - dark-theme
+image: "/assets/logos/dds_logo.jpg"
+title: DDS middlewares and their correspondence with ROS2 entities
 ---
 
-FastDDS and ros2 node correspondence
-==============
 **Author** - Kuchkov Aleksey
-
-**Created On** - 27.08.2023
 
 ## Introduction
 Hello everyone. I have a deal with ROS/ROS2 very often due to my professional needs and hobby interests. My latest hobby project is tightly coupled with such low-level tools as ROS2 middlewares, which represent internal implementation of ROS nodes, topics, subscribers, publishers, services, etc. In most cases, it is unnecessary to think about such low-level features being satisfied with ROS api/cli only. Having said that, sometimes you may run into obstacles due to ROS2 limitation, especially in topology discovering and diagnostic. For example, if you want to find the IP address of the machine ROS2 node runs on, you may struggle with CLI limitations. 
