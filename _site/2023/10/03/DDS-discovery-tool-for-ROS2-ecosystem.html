@@ -18,7 +18,7 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:site_name" content="Beware of Ohkvuck Aykseel">
 <meta property="og:title" content="DDS discovery tool for ROS2 ecosystem">
-<meta property="og:url" content="http://localhost:4000/2023/10/03/DDS-discovery-tool-for-ROS2-ecosystem.html">
+<meta property="og:url" content="/2023/10/03/DDS-discovery-tool-for-ROS2-ecosystem.html">
 
 
   <meta property="og:description" content="Author - Kuchkov Aleksey">
@@ -36,7 +36,7 @@
 
 
 
-<link rel="canonical" href="http://localhost:4000/2023/10/03/DDS-discovery-tool-for-ROS2-ecosystem.html">
+<link rel="canonical" href="/2023/10/03/DDS-discovery-tool-for-ROS2-ecosystem.html">
 
 
 
@@ -47,7 +47,7 @@
     
       "@type": "Person",
       "name": null,
-      "url": "http://localhost:4000/"
+      "url": "/"
     
   }
 </script>
@@ -173,7 +173,7 @@
 </ul>
 
 <p>So, my decision was to implement an architecture that would allows to use multiple types of clients, including web ones. The picture below demonstrates this idea:
-<img src="/assets/ros2monitor_scheme.webp" alt="./ros2monitor_scheme.svg" /></p>
+<img src="/biblblog/assets/ros2monitor_scheme.webp" alt="./ros2monitor_scheme.svg" /></p>
 
 <h1 id="the-daemon-architecture">The daemon architecture</h1>
 <p>The daemon has several configuration flags that determine it’s behavior. At the current moment, there is only two possible variants. The first one, uses the bare ROS2 CLI.
@@ -324,7 +324,7 @@ On the image above you can find several key elements:</p>
 <p>One of the major task of the client is the topic visualization feature. To open the visualization widget, you have to click to the plus button near the corresponding topic name on the topic list widget (shown with number 3)</p>
 
 <p>On the proposed video, you can observe the example of the point cloud topic visualization (sensor_msgs::msg::PointCloud2).</p>
-<iframe width="420" height="315" src="/assets/Video_demo.mp4" frameborder="0" allowfullscreen=""></iframe>
+<iframe width="420" height="315" src="/biblblog/assets/Video_demo.mp4" frameborder="0" allowfullscreen=""></iframe>
 
 <h1 id="restrictions">Restrictions</h1>
 <p>At the current moment, there are many features not yet implemented:
@@ -340,6 +340,12 @@ Visualization works correctly with a single publisher per topic only;</p>
 
 <p>Another goal is to implement the feature for workspace saving into text files and loading workspaces from these files and some sort of node templates. It can be done without huge efforts because the daemon itself uses JSON representation for ROS2 nodes internally. Node templates, in their turn, requires a little more work to have done due to the requirement of writing some wrappers for nodes located in the user’s filesystem. These wrappers, having wrote once, would be used as the templates for nodes which perform particular type of task, like object detection, image preprocessing, data visualization, to name a few with minimum amount of the code written by program’s user.</p>
 
+<h1 id="links">Links</h1>
+<p>The entire source code can be found in repositories in github:</p>
+<ul>
+  <li>Client: https://github.com/Biblbrox/ROS2Dashboard</li>
+  <li>Server: https://github.com/Biblbrox/robot_controller</li>
+</ul>
 
     </div><a class="u-url" href="/2023/10/03/DDS-discovery-tool-for-ROS2-ecosystem.html" hidden></a>
 </article>

@@ -30,7 +30,7 @@ As the main inspiration source, I took the Nvidia SDK, which includes the progra
 - Grant a way for filesystem package observing with corresponding detailed information.
 
 So, my decision was to implement an architecture that would allows to use multiple types of clients, including web ones. The picture below demonstrates this idea:
-![./ros2monitor_scheme.svg](/assets/ros2monitor_scheme.webp)
+![./ros2monitor_scheme.svg](/biblblog/assets/ros2monitor_scheme.webp)
 
 # The daemon architecture
 The daemon has several configuration flags that determine it's behavior. At the current moment, there is only two possible variants. The first one, uses the bare ROS2 CLI.
@@ -181,7 +181,7 @@ On the image above you can find several key elements:
 One of the major task of the client is the topic visualization feature. To open the visualization widget, you have to click to the plus button near the corresponding topic name on the topic list widget (shown with number 3)
 
 On the proposed video, you can observe the example of the point cloud topic visualization (sensor_msgs::msg::PointCloud2).
-<iframe width="420" height="315" src="/assets/Video_demo.mp4" frameborder="0" allowfullscreen></iframe>
+<iframe width="420" height="315" src="/biblblog/assets/Video_demo.mp4" frameborder="0" allowfullscreen></iframe>
 
 # Restrictions
 At the current moment, there are many features not yet implemented:
@@ -198,5 +198,5 @@ Another goal is to implement the feature for workspace saving into text files an
 
 # Links
 The entire source code can be found in repositories in github:
-Client: https://github.com/Biblbrox/ROS2Dashboard
-Server: https://github.com/Biblbrox/robot_controller
+- Client: https://github.com/Biblbrox/ROS2Dashboard
+- Server: https://github.com/Biblbrox/robot_controller
