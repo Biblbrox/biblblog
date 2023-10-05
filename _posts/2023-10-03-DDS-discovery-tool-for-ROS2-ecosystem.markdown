@@ -195,3 +195,8 @@ First of all, I want to stabilize the declared features to make them work proper
 
 Another goal is to implement the feature for workspace saving into text files and loading workspaces from these files and some sort of node templates. It can be done without huge efforts because the daemon itself uses JSON representation for ROS2 nodes internally. Node templates, in their turn, requires a little more work to have done due to the requirement of writing some wrappers for nodes located in the user's filesystem. These wrappers, having wrote once, would be used as the templates for nodes which perform particular type of task, like object detection, image preprocessing, data visualization, to name a few with minimum amount of the code written by program's user.
 
+
+# Links
+The entire source code can be found in repositories in github:
+Client: https://github.com/Biblbrox/ROS2Dashboard
+Server: https://github.com/Biblbrox/robot_controller
