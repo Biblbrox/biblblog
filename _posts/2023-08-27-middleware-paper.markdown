@@ -20,7 +20,7 @@ Firstly, it is unnecessary to get an idea about what the middleware serve for in
 
 There is some mess about the RTPS and DDS terminology. Although they are often used together, they represent the different layers in a network. DDS stands for Data Distribution Service that represents publisher-subscriber paradigm with rich type system and QoS (Quality of Service) features built-in. The RTPS (also known as [DDSI-RTPS](https://www.omg.org/spec/DDSI-RTPS/)) has the goal is to provide network and IPC communication at lower level. While the most DDS implementations use RTPS internally for delivering messages, this is not always the case. Furthermore, you can use bare RTPS without any typing system, but you do not have to do such clever tricks mostly. 
 
-| ![DDS_concept.svg](/assets/DDS_concept.svg) |
+| ![DDS_concept.svg](/biblblog/assets/DDS_concept.svg) |
 | :---------------------------------: |
 |      *FastDDS network example*      |
 
