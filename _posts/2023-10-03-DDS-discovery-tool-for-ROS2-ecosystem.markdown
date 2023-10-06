@@ -170,7 +170,7 @@ The daemon's response contains information about two nodes: turtlesim and turtle
 # The client
 The client is written using C++ with Qt and QML. I have chosen these technologies as closest to me. The main task of the client is to provide a user graphical user interface for communicating with the daemon. The client implementation uses Asio library for talking to the daemon. The images below demonstrate the UI of the client:
 
-![ui_client](/assets/client_ui3.png)
+![ui_client](/biblblog/assets/client_ui3.png)
 On the image above you can find several key elements:
 1. Graph area. It is the field where nodes rendered with their topic communication topology;
 2. Visualization area. This place is being used for visualizing topic data in real time;
