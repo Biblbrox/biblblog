@@ -1,0 +1,567 @@
+---
+layout: post
+classes:
+  - landing
+  - dark-theme
+image: "/assets/zynq/zynq_logo.webp"
+title: Realtime Linux Patch and UIO subsystem on Zynq 7000 - the Linux compatible FPGA platform
+---
+
+**Author** - Kuchkov Aleksey
+
+# Introduction
+FPGA based systems have great advantages over standard PS-only platforms in terms of flexibility and availabilities. Someone can implement the entire CPU on that without any additional hardwired PCB. Any FPGA has the main parameter that determines its power, named LUT (Lookup Tables). These are truth tables that are used to implement logical operations in FPGA. All the LUT tables are loaded at the startup of a device.
+
+Recently, I got acquainted with a device based on a pretty interesting Zynq chip. Besides the FPGA itself, it contains two Cortex A9 CPU cores that can be used to run Linux on it. There are different options for Zynq chip, including models with Cortex A53 cores (Zynq UltraScale), but I want to pay attention to a less expensive device based on Cortex A9 and 1Gb of ram - Alinx AC7020c.
+
+![]({{"/assets/zynq/20230725_142201.jpg" | relative_url}})
+
+
+# About Petalinux
+The most common way to run GNU/Linux on Xilinx devices is to use the Petalinux distribution, which has the main goal of providing a fully-futured Linux on FPGA SoCs. Petalinux is based on Yocto eSDK to configure U-boot, kernel, device tree, and rootfs. Petalinux has several command-line utilities for that.
+
+There are a few notes that are essential for Petalinux configuration. Especially if someone wants to load OS from removable devices like MicroSD. While U-Boot configuration is being processed, the option for the corresponding device must be enabled in Boot options -> Boot media
+
+
+![]({{"/assets/zynq/Boot_options.png" | relative_url}})
+
+To make my life a little simpler, I made a small bash script to automate Petalinux build process:
+```bash
+#!/bin/bash
+
+set -e
+
+project_root=$(dirname $(dirname $(realpath $0 )))
+HW_DESCR=${project_root}/fpga/export/main_top_wrapper.xsa
+ELF=./images/linux/zynq_fsbl.elf
+FPGA=${project_root}/fpga/export/bitstrim.bit
+PROJECT_NAME=project-name
+
+cd ${PROJECT_NAME}
+petalinux-config --get-hw-description=$HW_DESCR
+
+# Select actions
+declare -a choices=( $(dialog \
+                --backtitle "Petalinux build" \
+                --title "Packages" \
+                --checklist "Choose actions to do:" 90 30 30 \
+		1 "Configure device-tree" off \
+                2 "Configure u-boot" on \
+                3 "Configure kernel" on \
+                4 "Configure rootfs" on \
+		5 "Build" on \
+	 	6 "Package" on 2>&1 >/dev/tty) )
+
+for sel in "${choices[@]}"; do
+    case "$sel" in
+	1) petalinux-config -c device-tree;;
+	2) petalinux-config -c u-boot;;
+        3) petalinux-config -c kernel;;
+        4) petalinux-config -c rootfs;;
+	5) petalinux-build;;
+	6) petalinux-package --boot --force --fsbl $ELF --fpga $FPGA --u-boot;;
+        *) echo "Unknown option!";;
+    esac
+done
+``` 
+Via this script you may choose what you want to build.
+
+# Input output interfaces
+AC7020c has 54 PS gpio and 64 PL gpio with 32 but length. Thankfully, the Zyng 7000 XC7Z020-2CLG400I chip has overwhelming capabilities in terms of external devices and sensors. For interhardware communication on ARM devices, the AXI interface is frequently used. But Linux doesn't know so much about real addressing in the hardware in runtime. To bypass the virtual/real memory border in Linux, you can use the UIO subsystem, which allows you to map real hardware memory into Linux using sysfs and block devices.
+
+Every UIO device has its own folder under /sys/class/uioX, where X is the number of the device.
+
+To enable the UIO subsystem, you must check if you have the corresponding option enabled in the Linux kernel configuration.
+
+![]({{"/assets/zynq/uio_subsystem.png" | relative_url}})
+
+Then, you can assign your actual hardware registers to uio devices in the device tree. The petalinux allows you to customize the device tree using the system-user.dtsi file located in
+`<petalinux_project>/project-specs/meta-user/recipes-bsp/device-tree/files/system-user.dtsi`. 
+
+There is a wonderful series of articles about UIO: https://www.linkedin.com/pulse/gpio-petalinux-part-1-roy-messinger
+
+But I must warn you about a little detail. If you have FPGA Manager enabled in u-boot config, your root device will be named "amba" instead of "amba_pl," and you won't need to be able to customize your device tree this way. All of your peripherals will be connected to the ARM processor instead of the FPGA.
+
+UIO allows you not only to expose your GPIO devices to Linux but also to read whole memory regions from your hardware using mmap. Moreover, you can use PL interrupts to read data with interruptions. There are two ways of using UIO devices in Linux. The first way is to use the generic-uio driver that will be suitable for most applications. The second way is to create your own Linux kernel driver to handle UIO in your own way. The example of the device tree for the generic-uio driver can be written like this:
+```c
+/include/ "system-conf.dtsi"
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/media/xilinx-vip.h>
+/ {
+
+    // Axi GPIO element
+    gpio@41200000 {
+        compatible = "axi_gpio_0, generic-uio, ui_pdrv";
+        status = "okay";
+        xlnx,gpio-width = <1>;
+    };
+
+
+    axi_custom_device@40001000 {
+        compatible = "xlnx,axi-custom-device-1.0,generic-uio";
+        status = "okay";
+        xlnx,gpio-width = <1>;
+    };
+    
+    axi_custom_device@40002000 {
+        compatible = "xlnx,axi-custom-device-1.0,generic-uio";
+        status = "okay";
+        xlnx,gpio-width = <1>;
+    };
+    
+    axi_custom_device@40003000 {
+        compatible = "xlnx,axi-custom-device-1.0,generic-uio";
+        status = "okay";
+        xlnx,gpio-width = <1>;
+    };
+    
+
+    axi_custom_interrupt@40004000 {
+        compatible = "xlnx,axi-custom-interrupt-1.0,generic-uio";
+        status = "okay";
+        xlnx,gpio-width = <1>;
+     };
+
+
+    chosen {
+        bootargs = "console=ttyPS0,115200 earlyprintk earlycon root=/dev/mmcblk0p2 rw rootwait uio_pdrv_genirq.of_id=generic-uio";
+    };
+
+};
+
+&axi_custom_device_0
+{
+    compatible = "generic-uio";
+};
+
+&axi_custom_device_1
+{
+    compatible = "generic-uio";
+};
+
+&axi_custom_device_2
+{
+    compatible = "generic-uio";
+};
+
+&axi_gpio_0 
+{
+    compatible = "generic-uio";
+};
+
+&axi_custom_interrupt_0
+{
+    compatible = "generic-uio";
+};
+
+```
+After specifying UIO devices in your device tree, the corresponding /dev/uioX devices must appear in Linux. To read data from these devices, you should map their memory into your program via the UIO userspace driver. The structure of that driver can be pretty simple. It should provide access to your registers and data by device name (/dev/uioX) and number of memory regions (map0, 1, 2,...).
+
+The source code below demonstrates how such a driver can be written in the C++ language.
+
+UIODriver.hpp
+```c++
+#pragma once
+
+#include <string>
+#include <array>
+#include <vector>
+
+
+    /**
+     * AXI GPIO registers offsets
+     * They are only usable with an axi gpio Xilinx IP
+     */
+    namespace axi_gpio_regs {
+        constexpr uint32_t data_offset = 0x00;
+        constexpr uint32_t tri_offset = 0x04;
+        constexpr uint32_t data2_offset = 0x08;
+        constexpr uint32_t tri2_offset = 0x0C;
+        constexpr uint32_t global_irq_offset = 0x11C;
+        constexpr uint32_t irq_control_offset = 0x128;
+        constexpr uint32_t irq_status_offset = 0x120;
+    }// namespace axi_gpio_regs
+
+
+    /**
+    * The structure for particular memory region
+    */
+    struct MemoryRegion {
+        size_t num{};
+        size_t uio_num{};
+        size_t size;
+        size_t addr;
+        std::string path;
+        int uio_fd;
+        void *base_address;
+
+        MemoryRegion(size_t num, size_t uio_num, size_t size, size_t addr, int uio_fd);
+
+        MemoryRegion();
+
+        ~MemoryRegion();
+
+        void mmap();
+        void unmmap();
+    };
+
+
+    class UIODriver {
+    public:
+        explicit UIODriver;
+
+        ~UIODriver();
+
+        /**
+         * @brief Initialize uio driver. This method perform mmap for each uio device passed in constructor.
+         * @details This method should be called before any other method.
+         *
+         */
+        void init(std::vector<int> uio_devices) override;
+
+        /**
+         * @brief Read chunk of data from uio device
+         * @param uio_num uio device number
+         * @param mmap_num mmap number
+         * @param offset offset in mmap in bytes
+         * @param size size of chunk in bytes.
+         * @return
+         */
+        std::vector<std::byte> read_chunk(int uio_num, int mmap_num, int offset, int size);
+
+        /**
+         * @brief Read chunk of data from uio device by interrupt
+         * @param uio_num uio device number
+         * @param mmap_num mmap number
+         * @param offset offset in mmap in bytes
+         * @param size size of chunk in bytes.
+         * @return
+         */
+        std::vector<std::byte> read_chunk_int(int uio_num, int mmap_num, int offset, int size);
+
+        /**
+         * @brief Write unsigned 32-bit register to uio device
+         * @param uio_num uio device number
+         * @param mmap_num mmap number
+         * @param offset offset in mmap in bytes
+         * @param value value to write
+         */
+        void write_register(int uio_num, int mmap_num, int offset, uint32_t value);
+
+        /**
+         * @brief Read unsigned 32-bit register from uio device
+         * @param uio_num uio device number
+         * @param mmap_num mmap number
+         * @param offset offset in mmap in bytes
+         * @return
+         */
+        uint32_t read_register(int uio_num, int mmap_num, int offset);
+
+        /**
+         * @brief Read unsigned 32-bit register from uio device by interrupt
+         * @param uio_num uio device number
+         * @param mmap_num mmap number
+         * @param offset offset in mmap in bytes
+         * @return
+         */
+        uint32_t read_register_int(int uio_num, int mmap_num, int offset);
+
+        void wait_interrupt(int uio_num);
+
+        const std::array<std::array<MemoryRegion, 100>, 100> &get_mmap_regions() const;
+
+        /**
+         * Enable interrupts for UIO device uio_num. It is usable for Xilinx AXI GPIO IPs only.
+         * @param uio_num
+         */
+        void setup_interrupts(int uio_num);
+
+    private:
+        std::vector<int> m_pins;
+        std::vector<int> m_uio_fd;
+        /*
+        The only reason I use a fixed size std::array instead of unordered_map is that I faced with
+        some huge performance drop while reading UIO registers in a loop. Probably, it may be fixed using some custom unordered_map implementations like ankerl::unordered_map, but I decided to use fixed size arrays due to the fact that using more than 100 uio devices is a low-probability scenario.
+        */
+        std::array<std::array<MemoryRegion, 100>, 100> m_mmap_regions;
+    };
+```
+
+UIODriver.cpp
+```c++
+#include <unistd.h>
+#include <utility>
+
+#include "UIODriver.hpp"
+
+using fmt::format;
+
+std::vector<std::string> entries(const std::string &path) {
+    std::vector<std::string> entries;
+    for (const auto &entry : std::filesystem::directory_iterator(path)) {
+        entries.push_back(entry.path());
+    }
+    return entries;
+}
+
+size_t read_hex(const std::string &path) {
+    std::stringstream buffer;
+    std::ifstream file(path);
+    buffer << file.rdbuf();
+
+    size_t val = std::stoul(buffer.str(), nullptr, 16);
+    return val;
+}
+
+void UIODriver::init(std::vector<int> pins) {
+    m_pins = pins;
+    m_uio_fd.resize(m_pins.size());
+    std::fill(m_uio_fd.begin(), m_uio_fd.end(), -1);
+    // Open devices
+    for (size_t i = 0; i < m_pins.size(); ++i) {
+        std::string device_path = "/dev/uio" + std::to_string(m_pins[i]);
+        m_uio_fd[i] = open(device_path.c_str(), O_RDWR | O_SYNC);
+        if (m_uio_fd[i] < 0) {
+            std::string msg = fmt::format("UIODriver. Failed to open uio device: ", device_path);
+            throw std::runtime_error(msg);
+        }
+    }
+
+    // Iterate over devices
+    for (size_t i = 0; i < m_pins.size(); ++i) {
+        std::string mmap_dir = fmt::format("/sys/class/uio/uio{}/maps", m_pins[i]);
+        std::vector<std::string> mmaps_dirs = entries(mmap_dir);
+        // Iterate over memory regions
+        for (size_t j = 0; j < mmaps_dirs.size(); ++j) {
+            std::string mmap_size_file =
+                fmt::format("/sys/class/uio/uio{}/maps/map{}/size", m_pins[i], j);
+            std::string mmap_addr_file =
+                fmt::format("/sys/class/uio/uio{}/maps/map{}/addr", m_pins[i], j);
+            size_t mmap_size = read_hex(mmap_size_file);
+            size_t mmap_addr = read_hex(mmap_addr_file);
+            m_mmap_regions[m_pins[i]][j] =
+                MemoryRegion(j, m_pins[i], mmap_size, mmap_addr, m_uio_fd[i]);
+            m_mmap_regions[m_pins[i]][j].mmap();
+        }
+    }
+}
+
+UIODriver::~UIODriver() {
+    for (int fd : m_uio_fd) {
+        if (fd >= 0) {
+            int res = close(fd);
+            if (res < 0) {
+                std::cerr << "UIODriver. Failed to close uio device\n";
+            }
+        }
+    }
+}
+
+void UIODriver::wait_interrupt(int uio_num) {
+    if (uio_num < 0 || uio_num >= m_pins.size()) {
+        std::string msg = fmt::format("UIODriver. Invalid pin number: ", uio_num);
+        throw std::runtime_error(msg);
+    }
+
+    int fd = m_uio_fd[uio_num];
+
+    if (fd < 0) {
+        std::string msg = fmt::format("UIODriver. Invalid uio file descriptor: ", fd);
+        throw std::runtime_error(msg);
+    }
+
+    u_long icount;
+    int reenable = 1;
+    write(fd, static_cast<void *>(&reenable), sizeof(int));
+    int err = read(fd, &icount, sizeof(u_long));
+    if (err != sizeof(u_long)) {
+        std::string msg = fmt::format("UIODriver. Failed to read from uio device: ", fd);
+        throw std::runtime_error(msg);
+    }
+    // Interrupt happened
+}
+
+std::vector<std::byte> UIODriver::read_chunk(int uio_num, int mmap_num, int offset, int size) {
+    if (uio_num < 0 || uio_num >= m_uio_fd.size()) {
+        std::string msg = fmt::format("UIODriver. Invalid uio number: ", uio_num);
+        throw std::runtime_error(msg);
+    }
+
+    if (mmap_num < 0 || mmap_num >= m_mmap_regions[uio_num].size()) {
+        std::string msg = fmt::format("UIODriver. Invalid mmap number: ", mmap_num);
+        throw std::runtime_error(msg);
+    }
+
+    if (offset < 0 || offset + size > m_mmap_regions[uio_num][mmap_num].size) {
+        std::string msg = fmt::format("UIODriver. Invalid offset: ", offset);
+        throw std::runtime_error(msg);
+    }
+    // End of error handling
+
+    // Read chunk
+    std::vector<std::byte> chunk(size);
+    std::memcpy(chunk.data(), (char *)m_mmap_regions[uio_num][mmap_num].base_address + offset,
+                size);
+
+    return chunk;
+}
+
+uint32_t UIODriver::read_register(int uio_num, int mmap_num, int offset) {
+    return *reinterpret_cast<const volatile uint32_t *>(
+        static_cast<volatile unsigned const char *>(
+            m_mmap_regions[uio_num][mmap_num].base_address) +
+        offset);
+}
+
+std::vector<std::byte> UIODriver::read_chunk_int(int uio_num, int mmap_num, int offset, int size) {
+    wait_interrupt(uio_num);
+    return read_chunk(uio_num, mmap_num, offset, size);
+}
+
+uint32_t UIODriver::read_register_int(int uio_num, int mmap_num, int offset) {
+    wait_interrupt(uio_num);
+    return read_register(uio_num, mmap_num, offset);
+}
+
+void UIODriver::write_register(int uio_num, int mmap_num, int offset, uint32_t value) {
+    if (mmap_num < 0 || mmap_num >= m_mmap_regions[uio_num].size()) {
+        std::string msg = fmt::format("UIODriver. Invalid mmap number: ", mmap_num);
+
+        throw std::runtime_error(msg);
+    }
+
+    if (offset < 0 || offset + 4 > m_mmap_regions[uio_num][mmap_num].size) {
+        std::string msg = fmt::format("UIODriver. Invalid offset: ", offset);
+
+        throw std::runtime_error(msg);
+    }
+
+    *(uint32_t *)((char *)m_mmap_regions[uio_num][mmap_num].base_address + offset) = value;
+}
+
+const std::array<std::array<MemoryRegion, 100>, 100> &UIODriver::get_mmap_regions() const {
+    return m_mmap_regions;
+}
+
+UIODriver::UIODriver() {}
+
+void UIODriver::setup_interrupts(int uio_num) {
+    auto uio = std::find(m_pins.begin(), m_pins.end(), uio_num);
+    if (uio == m_pins.cend()) {
+        std::string err = format("UIO with num {} can't be found to setup interrupts", uio_num);
+        throw std::runtime_error(err);
+    }
+
+    // Take 0th mmap region
+    auto mem_region = m_mmap_regions[uio_num][0];
+    if (mem_region.base_address == nullptr) {
+        std::string err = format("Mmap region 0 of {} uio device isn't set up", uio_num);
+        throw std::runtime_error(err);
+    }
+
+    // Enable gpio interrupts
+    write_register(uio_num, 0, axi_gpio_regs::tri_offset, 0xffffffff);
+    write_register(uio_num, 0, axi_gpio_regs::irq_control_offset, 0x1);
+    write_register(uio_num, 0, axi_gpio_regs::global_irq_offset, 0x80000000);
+    // write_register(uio_num, 0, axi_gpio_regs::irq_status_offset, 0x1);
+    int reenable = 1;
+    write(m_uio_fd[uio_num], static_cast<void *>(&reenable), sizeof(int));
+}
+
+MemoryRegion::MemoryRegion(size_t num, size_t uio_num, size_t size, size_t addr, int uio_fd)
+    : size(size), addr(addr), uio_fd(uio_fd), base_address(nullptr) {
+    path = fmt::format("/sys/class/uio/uio{}/maps/map{}", uio_num, num);
+}
+
+MemoryRegion::MemoryRegion() {
+    num = 0;
+    uio_num = 0;
+    size = 0;
+    addr = 0;
+    uio_fd = 0;
+    base_address = nullptr;
+}
+
+void MemoryRegion::mmap() {
+    if (addr == 0) return;
+
+    base_address = ::mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, uio_fd, 0);
+    if (base_address == MAP_FAILED) {
+        std::string msg = fmt::format("UIODriver. Failed to mmap: ", addr);
+        throw std::runtime_error(msg);
+    }
+}
+
+void MemoryRegion::unmmap() {
+    if (base_address == nullptr) {
+        return;
+    }
+
+    int res = munmap(base_address, size);
+    if (res < 0) {
+        std::string msg =
+            fmt::format("UIODriver. Failed to unmap: {}. Errno str: {}\n", addr, strerror(errno));
+        std::cerr << msg;
+    }
+}
+
+MemoryRegion::~MemoryRegion() { unmmap(); }
+
+```
+
+
+# AXI GPIO Interrupts
+It's important to know that if you want to use interrupts, it's much easier to use axi_gpio elements on the PL side. Otherwise, you will need to implement your own interrupt handler. In the case of axi_gpio, the whole interrupt logic is hidden inside the PL element axi_gpio and implemented by Xilinx.
+AXI_GPIO uses the following registers to control interrupts:
+![]({{"/assets/zynq/AXI_GPIO.jpg" | relative_url}})
+
+In order to use interrupts, you must configure them via these registers on the Linux side. The following steps should be taken:
+1. Enable GPIO channels and their interrupt registers. You can enable for the first, second, or both:
+   1. Configure your gpio as input or output:
+    ```c++ 
+    write_register(uio_num, 0, axi_gpio_regs::tri_offset, 0xffffffff);
+    ```
+   2. For first chanell: 
+    ```c++ 
+    write_register(uio_num, 0, axi_gpio_regs::irq_control_offset, 0x1);
+    ```
+    3. For second channel:
+    ```c++ 
+    write_register(uio_num, 0, axi_gpio_regs::irq_control_offset, 0x2);
+    ```
+    4. For both:
+    ```c++ 
+    write_register(uio_num, 0, axi_gpio_regs::irq_control_offset, 0x3);
+    ```
+    As you can see, you can control interrupts in AXI_GPIO via IP Interrupt Enable Register (IP IER). 
+2. Enable Global Interrupts via Global Interrupt Register:
+    ```c++ 
+    write_register(uio_num, 0, axi_gpio_regs::global_irq_offset, 0x80000000);
+    ```
+
+After the provided steps, you'll be able to read (or write) your AXI_GPIO devices with interrupts. Be warned that the provided offsets and registers are actual only for the AXI_GPIO Xilinx IP block. To use interrupts with custom devices, you should write your own interrupt handlers.
+# Linux realtime capabilities
+There are different methods to achieve low latency on Linux systems. Among them:
+- Using low-latency kernel. This option enabled by default in a xilinx linux kernel;
+- Using a PREEMPT_RT kernel patch;
+- Using a Ubuntu Realtime Kernel (uses PREEMPT_RT inside).
+
+The most appropriate way to take advantage of the real-time kernel in Petalinux is to use the PREEMPT_RT patch directly. Due to its nature, this patch requires rewrtiting a huge number of drivers. Therefore, there is no guarantee that it will work in every particular case, use it with precaution. But, to be honest, I haven't faced any issues yet. To apply the PREEMT_RT patch to the xilinx Linux kernel, you should follow the instructions: https://xilinx-wiki.atlassian.net/wiki/spaces/A/pages/18842435/Real-Time+Linux. Be aware that you must use the same kernel version as the version the patch is intended for.
+
+To demonstrate the effect of applying the PREEMPT_RT patch to the kernel, I will use a hardware signal generator that produces a sawtooth signal with a frequency of 989 kHz. Firstly, I will demonstrate the process of reading the signal on a vanila kernel, then of the kernel with the PREEMPT_RT patch applied. The signal just increments a register starting from 0 to 1002 and starts this process again.
+
+The signal plot on a vanila kernel (low-latency enabled):
+![]({{"/assets/zynq/zynq.png" | relative_url}})
+
+The signal plot on a PREEMPT_RT patched kernel:
+![]({{"/assets/zynq/ZynqRealtime.png" | relative_url}})
+
+The main difference is hidden in the signal drops that you may find on the first plot. The responsibility for such drops lies on the Linux kernel scheduler, which sometimes does not switch context fast enough to prevent a signal loss. In the case of real-time mode, user processes have a determenistic response time because, in real-time mode, any code can block any other code from accessing resources. It makes a system more responsible, though it may harm to throughtput in some cases.
+
+In my particular case, the preemption patch hasn't improved the latency, but it has improved stability and made the latency more predictable. As you can see on the second plot, there are no huge gaps caused by the Linux scheduler.
+
+# Useful resources
+1. Understanding kernel preemption modes: [https://devarea.com/understanding-linux-kernel-preemption/](https://devarea.com/understanding-linux-kernel-preemption/);
+2. AXIO GPIO documentation: [https://docs.xilinx.com/v/u/en-US/pg144-axi-gpio](https://docs.xilinx.com/v/u/en-US/pg144-axi-gpio);
+3. The article series about UIO: [https://www.linkedin.com/pulse/gpio-petalinux-part-1-roy-messinger](https://www.linkedin.com/pulse/gpio-petalinux-part-1-roy-messinger);
+4. The perfect forum discussion about using UIO with interrupts. You may find there many useful examples: [https://forum.digilent.com/topic/4750-how-to-detect-and-handle-uio-interrupt/](https://forum.digilent.com/topic/4750-how-to-detect-and-handle-uio-interrupt/).

@@ -37,14 +37,14 @@ The daemon has several configuration flags that determine it's behavior. At the 
 The another uses FastDDS discoverer server. Thus, considering the fact that FastDDS is the default middleware implementation, the combination of ROS2 CLI and FastDDS server covers the major part of needs. Having said that, there is a plan to implement the micro-ros support in the future. 
 
 As being said, the daemon has communication channel through Unix Domain Sockets with JSON requests. The typical request looks like:
-```JSON
+```json
 { 
     "command": "state", 
     "arguments": [] 
 }
 ```
 with the following response:
-```JSON
+```json
 {
    "nodes":[
       {

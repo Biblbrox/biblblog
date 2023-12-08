@@ -1,0 +1,1217 @@
+<!doctype html>
+<!--
+  Minimal Mistakes Jekyll Theme 4.24.0 by Michael Rose
+  Copyright 2013-2020 Michael Rose - mademistakes.com | @mmistakes
+  Free for personal and commercial use under the MIT license
+  https://github.com/mmistakes/minimal-mistakes/blob/master/LICENSE
+-->
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8">
+
+<!-- begin _includes/seo.html --><title>Realtime Linux Patch and UIO subsystem on Zynq 7000 - the Linux compatible FPGA platform - Beware of Ohkvuck Aykseel</title>
+<meta name="description" content="Author - Kuchkov Aleksey">
+
+
+
+<meta property="og:type" content="article">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="Beware of Ohkvuck Aykseel">
+<meta property="og:title" content="Realtime Linux Patch and UIO subsystem on Zynq 7000 - the Linux compatible FPGA platform">
+<meta property="og:url" content="http://localhost:4000/2023/11/13/2023-zynq-platform.html">
+
+
+  <meta property="og:description" content="Author - Kuchkov Aleksey">
+
+
+
+
+
+
+
+  <meta property="article:published_time" content="2023-11-13T00:00:00+03:00">
+
+
+
+
+
+
+<link rel="canonical" href="http://localhost:4000/2023/11/13/2023-zynq-platform.html">
+
+
+
+
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    
+      "@type": "Person",
+      "name": null,
+      "url": "http://localhost:4000/"
+    
+  }
+</script>
+
+
+
+
+
+
+
+<!-- end _includes/seo.html -->
+
+
+
+  <link href="/feed.xml" type="application/atom+xml" rel="alternate" title="Beware of Ohkvuck Aykseel Feed">
+
+
+<!-- https://t.co/dKP3o1e -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5/css/all.min.css"></noscript>
+
+
+
+    <!-- start custom head snippets -->
+
+<!-- insert favicons. use https://realfavicongenerator.net/ -->
+
+<!-- end custom head snippets -->
+
+    <link rel="stylesheet" href="http://localhost:4000/assets/css/custom.css">
+
+  </head>
+
+  <body class="layout--post landing dark-theme">
+    <nav class="skip-links">
+  <ul>
+    <li><a href="#site-nav" class="screen-reader-shortcut">Skip to primary navigation</a></li>
+    <li><a href="#main" class="screen-reader-shortcut">Skip to content</a></li>
+    <li><a href="#footer" class="screen-reader-shortcut">Skip to footer</a></li>
+  </ul>
+</nav>
+
+    
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        
+        <a class="site-title" href="/">
+          Beware of Ohkvuck Aykseel
+          
+        </a>
+        <ul class="visible-links"><li class="masthead__menu-item">
+              <a href="/about/">About</a>
+            </li><li class="masthead__menu-item">
+              <a href="/">Posts</a>
+            </li></ul>
+        
+        <button class="greedy-nav__toggle hidden" type="button">
+          <span class="visually-hidden">Toggle menu</span>
+          <div class="navicon"></div>
+        </button>
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+
+    <div class="initial-content">
+      
+
+<div id="main" role="main">
+  <article class="splash" itemscope itemtype="https://schema.org/CreativeWork">
+    <meta itemprop="headline" content="Realtime Linux Patch and UIO subsystem on Zynq 7000 - the Linux compatible FPGA platform">
+    <meta itemprop="description" content="Author - Kuchkov Aleksey">
+    <meta itemprop="datePublished" content="2023-11-13T00:00:00+03:00">
+    
+
+    <section class="page__content" itemprop="text">
+      <article class="splash" style="margin-top: 4em;" itemtype="http://schema.org/BlogPosting">
+    <header class="post-header">
+        <h1 class="post-title p-name" itemprop="name headline">Realtime Linux Patch and UIO subsystem on Zynq 7000 - the Linux compatible FPGA platform</h1><img src="/assets/zynq/zynq_logo.webp" alt="" class="featured-image-post center"><p class="post-meta">
+            <time class="dt-published" datetime="2023-11-13T00:00:00+03:00" itemprop="datePublished">Nov 13, 2023
+            </time></p>
+    </header>
+
+    <div class="post-content e-content" itemprop="articleBody">
+        <p><strong>Author</strong> - Kuchkov Aleksey</p>
+
+<h1 id="introduction">Introduction</h1>
+<p>FPGA based systems have great advantages over standard PS-only platforms in terms of flexibility and availabilities. Someone can implement the entire CPU on that without any additional hardwired PCB. Any FPGA has the main parameter that determines its power, named LUT (Lookup Tables). These are truth tables that are used to implement logical operations in FPGA. All the LUT tables are loaded at the startup of a device.</p>
+
+<p>Recently, I got acquainted with a device based on a pretty interesting Zynq chip. Besides the FPGA itself, it contains two Cortex A9 CPU cores that can be used to run Linux on it. There are different options for Zynq chip, including models with Cortex A53 cores (Zynq UltraScale), but I want to pay attention to a less expensive device based on Cortex A9 and 1Gb of ram - Alinx AC7020c.</p>
+
+<p><img src="/assets/zynq/20230725_142201.jpg" alt="" /></p>
+
+<h1 id="about-petalinux">About Petalinux</h1>
+<p>The most common way to run GNU/Linux on Xilinx devices is to use the Petalinux distribution, which has the main goal of providing a fully-futured Linux on FPGA SoCs. Petalinux is based on Yocto eSDK to configure U-boot, kernel, device tree, and rootfs. Petalinux has several command-line utilities for that.</p>
+
+<p>There are a few notes that are essential for Petalinux configuration. Especially if someone wants to load OS from removable devices like MicroSD. While U-Boot configuration is being processed, the option for the corresponding device must be enabled in Boot options -&gt; Boot media</p>
+
+<p><img src="/assets/zynq/Boot_options.png" alt="" /></p>
+
+<p>To make my life a little simpler, I made a small bash script to automate Petalinux build process:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+</pre></td><td class="rouge-code"><pre><span class="c">#!/bin/bash</span>
+
+<span class="nb">set</span> <span class="nt">-e</span>
+
+<span class="nv">project_root</span><span class="o">=</span><span class="si">$(</span><span class="nb">dirname</span> <span class="si">$(</span><span class="nb">dirname</span> <span class="si">$(</span><span class="nb">realpath</span> <span class="nv">$0</span> <span class="si">)))</span>
+<span class="nv">HW_DESCR</span><span class="o">=</span><span class="k">${</span><span class="nv">project_root</span><span class="k">}</span>/fpga/export/main_top_wrapper.xsa
+<span class="nv">ELF</span><span class="o">=</span>./images/linux/zynq_fsbl.elf
+<span class="nv">FPGA</span><span class="o">=</span><span class="k">${</span><span class="nv">project_root</span><span class="k">}</span>/fpga/export/bitstrim.bit
+<span class="nv">PROJECT_NAME</span><span class="o">=</span>project-name
+
+<span class="nb">cd</span> <span class="k">${</span><span class="nv">PROJECT_NAME</span><span class="k">}</span>
+petalinux-config <span class="nt">--get-hw-description</span><span class="o">=</span><span class="nv">$HW_DESCR</span>
+
+<span class="c"># Select actions</span>
+<span class="nb">declare</span> <span class="nt">-a</span> <span class="nv">choices</span><span class="o">=(</span> <span class="si">$(</span>dialog <span class="se">\</span>
+                <span class="nt">--backtitle</span> <span class="s2">"Petalinux build"</span> <span class="se">\</span>
+                <span class="nt">--title</span> <span class="s2">"Packages"</span> <span class="se">\</span>
+                <span class="nt">--checklist</span> <span class="s2">"Choose actions to do:"</span> 90 30 30 <span class="se">\</span>
+		1 <span class="s2">"Configure device-tree"</span> off <span class="se">\</span>
+                2 <span class="s2">"Configure u-boot"</span> on <span class="se">\</span>
+                3 <span class="s2">"Configure kernel"</span> on <span class="se">\</span>
+                4 <span class="s2">"Configure rootfs"</span> on <span class="se">\</span>
+		5 <span class="s2">"Build"</span> on <span class="se">\</span>
+	 	6 <span class="s2">"Package"</span> on 2&gt;&amp;1 <span class="o">&gt;</span>/dev/tty<span class="si">)</span> <span class="o">)</span>
+
+<span class="k">for </span>sel <span class="k">in</span> <span class="s2">"</span><span class="k">${</span><span class="nv">choices</span><span class="p">[@]</span><span class="k">}</span><span class="s2">"</span><span class="p">;</span> <span class="k">do
+    case</span> <span class="s2">"</span><span class="nv">$sel</span><span class="s2">"</span> <span class="k">in
+	</span>1<span class="p">)</span> petalinux-config <span class="nt">-c</span> device-tree<span class="p">;;</span>
+	2<span class="p">)</span> petalinux-config <span class="nt">-c</span> u-boot<span class="p">;;</span>
+        3<span class="p">)</span> petalinux-config <span class="nt">-c</span> kernel<span class="p">;;</span>
+        4<span class="p">)</span> petalinux-config <span class="nt">-c</span> rootfs<span class="p">;;</span>
+	5<span class="p">)</span> petalinux-build<span class="p">;;</span>
+	6<span class="p">)</span> petalinux-package <span class="nt">--boot</span> <span class="nt">--force</span> <span class="nt">--fsbl</span> <span class="nv">$ELF</span> <span class="nt">--fpga</span> <span class="nv">$FPGA</span> <span class="nt">--u-boot</span><span class="p">;;</span>
+        <span class="k">*</span><span class="p">)</span> <span class="nb">echo</span> <span class="s2">"Unknown option!"</span><span class="p">;;</span>
+    <span class="k">esac</span>
+<span class="k">done</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>Via this script you may choose what you want to build.</p>
+
+<h1 id="input-output-interfaces">Input output interfaces</h1>
+<p>AC7020c has 54 PS gpio and 64 PL gpio with 32 but length. Thankfully, the Zyng 7000 XC7Z020-2CLG400I chip has overwhelming capabilities in terms of external devices and sensors. For interhardware communication on ARM devices, the AXI interface is frequently used. But Linux doesn’t know so much about real addressing in the hardware in runtime. To bypass the virtual/real memory border in Linux, you can use the UIO subsystem, which allows you to map real hardware memory into Linux using sysfs and block devices.</p>
+
+<p>Every UIO device has its own folder under /sys/class/uioX, where X is the number of the device.</p>
+
+<p>To enable the UIO subsystem, you must check if you have the corresponding option enabled in the Linux kernel configuration.</p>
+
+<p><img src="/assets/zynq/uio_subsystem.png" alt="" /></p>
+
+<p>Then, you can assign your actual hardware registers to uio devices in the device tree. The petalinux allows you to customize the device tree using the system-user.dtsi file located in
+<code class="language-plaintext highlighter-rouge">&lt;petalinux_project&gt;/project-specs/meta-user/recipes-bsp/device-tree/files/system-user.dtsi</code>.</p>
+
+<p>There is a wonderful series of articles about UIO: https://www.linkedin.com/pulse/gpio-petalinux-part-1-roy-messinger</p>
+
+<p>But I must warn you about a little detail. If you have FPGA Manager enabled in u-boot config, your root device will be named “amba” instead of “amba_pl,” and you won’t need to be able to customize your device tree this way. All of your peripherals will be connected to the ARM processor instead of the FPGA.</p>
+
+<p>UIO allows you not only to expose your GPIO devices to Linux but also to read whole memory regions from your hardware using mmap. Moreover, you can use PL interrupts to read data with interruptions. There are two ways of using UIO devices in Linux. The first way is to use the generic-uio driver that will be suitable for most applications. The second way is to create your own Linux kernel driver to handle UIO in your own way. The example of the device tree for the generic-uio driver can be written like this:</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+</pre></td><td class="rouge-code"><pre><span class="o">/</span><span class="n">include</span><span class="o">/</span> <span class="s">"system-conf.dtsi"</span>
+<span class="cp">#include &lt;dt-bindings/gpio/gpio.h&gt;
+#include &lt;dt-bindings/media/xilinx-vip.h&gt;
+</span><span class="o">/</span> <span class="p">{</span>
+
+    <span class="c1">// Axi GPIO element</span>
+    <span class="n">gpio</span><span class="err">@</span><span class="mi">41200000</span> <span class="p">{</span>
+        <span class="n">compatible</span> <span class="o">=</span> <span class="s">"axi_gpio_0, generic-uio, ui_pdrv"</span><span class="p">;</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="s">"okay"</span><span class="p">;</span>
+        <span class="n">xlnx</span><span class="p">,</span><span class="n">gpio</span><span class="o">-</span><span class="n">width</span> <span class="o">=</span> <span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+    <span class="p">};</span>
+
+
+    <span class="n">axi_custom_device</span><span class="err">@</span><span class="mi">40001000</span> <span class="p">{</span>
+        <span class="n">compatible</span> <span class="o">=</span> <span class="s">"xlnx,axi-custom-device-1.0,generic-uio"</span><span class="p">;</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="s">"okay"</span><span class="p">;</span>
+        <span class="n">xlnx</span><span class="p">,</span><span class="n">gpio</span><span class="o">-</span><span class="n">width</span> <span class="o">=</span> <span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+    <span class="p">};</span>
+    
+    <span class="n">axi_custom_device</span><span class="err">@</span><span class="mi">40002000</span> <span class="p">{</span>
+        <span class="n">compatible</span> <span class="o">=</span> <span class="s">"xlnx,axi-custom-device-1.0,generic-uio"</span><span class="p">;</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="s">"okay"</span><span class="p">;</span>
+        <span class="n">xlnx</span><span class="p">,</span><span class="n">gpio</span><span class="o">-</span><span class="n">width</span> <span class="o">=</span> <span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+    <span class="p">};</span>
+    
+    <span class="n">axi_custom_device</span><span class="err">@</span><span class="mi">40003000</span> <span class="p">{</span>
+        <span class="n">compatible</span> <span class="o">=</span> <span class="s">"xlnx,axi-custom-device-1.0,generic-uio"</span><span class="p">;</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="s">"okay"</span><span class="p">;</span>
+        <span class="n">xlnx</span><span class="p">,</span><span class="n">gpio</span><span class="o">-</span><span class="n">width</span> <span class="o">=</span> <span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+    <span class="p">};</span>
+    
+
+    <span class="n">axi_custom_interrupt</span><span class="err">@</span><span class="mi">40004000</span> <span class="p">{</span>
+        <span class="n">compatible</span> <span class="o">=</span> <span class="s">"xlnx,axi-custom-interrupt-1.0,generic-uio"</span><span class="p">;</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="s">"okay"</span><span class="p">;</span>
+        <span class="n">xlnx</span><span class="p">,</span><span class="n">gpio</span><span class="o">-</span><span class="n">width</span> <span class="o">=</span> <span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+     <span class="p">};</span>
+
+
+    <span class="n">chosen</span> <span class="p">{</span>
+        <span class="n">bootargs</span> <span class="o">=</span> <span class="s">"console=ttyPS0,115200 earlyprintk earlycon root=/dev/mmcblk0p2 rw rootwait uio_pdrv_genirq.of_id=generic-uio"</span><span class="p">;</span>
+    <span class="p">};</span>
+
+<span class="p">};</span>
+
+<span class="o">&amp;</span><span class="n">axi_custom_device_0</span>
+<span class="p">{</span>
+    <span class="n">compatible</span> <span class="o">=</span> <span class="s">"generic-uio"</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="o">&amp;</span><span class="n">axi_custom_device_1</span>
+<span class="p">{</span>
+    <span class="n">compatible</span> <span class="o">=</span> <span class="s">"generic-uio"</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="o">&amp;</span><span class="n">axi_custom_device_2</span>
+<span class="p">{</span>
+    <span class="n">compatible</span> <span class="o">=</span> <span class="s">"generic-uio"</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="o">&amp;</span><span class="n">axi_gpio_0</span> 
+<span class="p">{</span>
+    <span class="n">compatible</span> <span class="o">=</span> <span class="s">"generic-uio"</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="o">&amp;</span><span class="n">axi_custom_interrupt_0</span>
+<span class="p">{</span>
+    <span class="n">compatible</span> <span class="o">=</span> <span class="s">"generic-uio"</span><span class="p">;</span>
+<span class="p">};</span>
+
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>After specifying UIO devices in your device tree, the corresponding /dev/uioX devices must appear in Linux. To read data from these devices, you should map their memory into your program via the UIO userspace driver. The structure of that driver can be pretty simple. It should provide access to your registers and data by device name (/dev/uioX) and number of memory regions (map0, 1, 2,…).</p>
+
+<p>The source code below demonstrates how such a driver can be written in the C++ language.</p>
+
+<p>UIODriver.hpp</p>
+<div class="language-c++ highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+</pre></td><td class="rouge-code"><pre><span class="cp">#pragma once
+</span>
+<span class="cp">#include &lt;string&gt;
+#include &lt;array&gt;
+#include &lt;vector&gt;
+</span>
+
+    <span class="cm">/**
+     * AXI GPIO registers offsets
+     * They are only usable with an axi gpio Xilinx IP
+     */</span>
+    <span class="k">namespace</span> <span class="n">axi_gpio_regs</span> <span class="p">{</span>
+        <span class="k">constexpr</span> <span class="kt">uint32_t</span> <span class="n">data_offset</span> <span class="o">=</span> <span class="mh">0x00</span><span class="p">;</span>
+        <span class="k">constexpr</span> <span class="kt">uint32_t</span> <span class="n">tri_offset</span> <span class="o">=</span> <span class="mh">0x04</span><span class="p">;</span>
+        <span class="k">constexpr</span> <span class="kt">uint32_t</span> <span class="n">data2_offset</span> <span class="o">=</span> <span class="mh">0x08</span><span class="p">;</span>
+        <span class="k">constexpr</span> <span class="kt">uint32_t</span> <span class="n">tri2_offset</span> <span class="o">=</span> <span class="mh">0x0C</span><span class="p">;</span>
+        <span class="k">constexpr</span> <span class="kt">uint32_t</span> <span class="n">global_irq_offset</span> <span class="o">=</span> <span class="mh">0x11C</span><span class="p">;</span>
+        <span class="k">constexpr</span> <span class="kt">uint32_t</span> <span class="n">irq_control_offset</span> <span class="o">=</span> <span class="mh">0x128</span><span class="p">;</span>
+        <span class="k">constexpr</span> <span class="kt">uint32_t</span> <span class="n">irq_status_offset</span> <span class="o">=</span> <span class="mh">0x120</span><span class="p">;</span>
+    <span class="p">}</span><span class="c1">// namespace axi_gpio_regs</span>
+
+
+    <span class="cm">/**
+    * The structure for particular memory region
+    */</span>
+    <span class="k">struct</span> <span class="nc">MemoryRegion</span> <span class="p">{</span>
+        <span class="kt">size_t</span> <span class="n">num</span><span class="p">{};</span>
+        <span class="kt">size_t</span> <span class="n">uio_num</span><span class="p">{};</span>
+        <span class="kt">size_t</span> <span class="n">size</span><span class="p">;</span>
+        <span class="kt">size_t</span> <span class="n">addr</span><span class="p">;</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">path</span><span class="p">;</span>
+        <span class="kt">int</span> <span class="n">uio_fd</span><span class="p">;</span>
+        <span class="kt">void</span> <span class="o">*</span><span class="n">base_address</span><span class="p">;</span>
+
+        <span class="n">MemoryRegion</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">num</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">uio_num</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">size</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">addr</span><span class="p">,</span> <span class="kt">int</span> <span class="n">uio_fd</span><span class="p">);</span>
+
+        <span class="n">MemoryRegion</span><span class="p">();</span>
+
+        <span class="o">~</span><span class="n">MemoryRegion</span><span class="p">();</span>
+
+        <span class="kt">void</span> <span class="n">mmap</span><span class="p">();</span>
+        <span class="kt">void</span> <span class="n">unmmap</span><span class="p">();</span>
+    <span class="p">};</span>
+
+
+    <span class="k">class</span> <span class="nc">UIODriver</span> <span class="p">{</span>
+    <span class="nl">public:</span>
+        <span class="k">explicit</span> <span class="n">UIODriver</span><span class="p">;</span>
+
+        <span class="o">~</span><span class="n">UIODriver</span><span class="p">();</span>
+
+        <span class="cm">/**
+         * @brief Initialize uio driver. This method perform mmap for each uio device passed in constructor.
+         * @details This method should be called before any other method.
+         *
+         */</span>
+        <span class="kt">void</span> <span class="n">init</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">uio_devices</span><span class="p">)</span> <span class="k">override</span><span class="p">;</span>
+
+        <span class="cm">/**
+         * @brief Read chunk of data from uio device
+         * @param uio_num uio device number
+         * @param mmap_num mmap number
+         * @param offset offset in mmap in bytes
+         * @param size size of chunk in bytes.
+         * @return
+         */</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">byte</span><span class="o">&gt;</span> <span class="n">read_chunk</span><span class="p">(</span><span class="kt">int</span> <span class="n">uio_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">mmap_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">offset</span><span class="p">,</span> <span class="kt">int</span> <span class="n">size</span><span class="p">);</span>
+
+        <span class="cm">/**
+         * @brief Read chunk of data from uio device by interrupt
+         * @param uio_num uio device number
+         * @param mmap_num mmap number
+         * @param offset offset in mmap in bytes
+         * @param size size of chunk in bytes.
+         * @return
+         */</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">byte</span><span class="o">&gt;</span> <span class="n">read_chunk_int</span><span class="p">(</span><span class="kt">int</span> <span class="n">uio_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">mmap_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">offset</span><span class="p">,</span> <span class="kt">int</span> <span class="n">size</span><span class="p">);</span>
+
+        <span class="cm">/**
+         * @brief Write unsigned 32-bit register to uio device
+         * @param uio_num uio device number
+         * @param mmap_num mmap number
+         * @param offset offset in mmap in bytes
+         * @param value value to write
+         */</span>
+        <span class="kt">void</span> <span class="n">write_register</span><span class="p">(</span><span class="kt">int</span> <span class="n">uio_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">mmap_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">offset</span><span class="p">,</span> <span class="kt">uint32_t</span> <span class="n">value</span><span class="p">);</span>
+
+        <span class="cm">/**
+         * @brief Read unsigned 32-bit register from uio device
+         * @param uio_num uio device number
+         * @param mmap_num mmap number
+         * @param offset offset in mmap in bytes
+         * @return
+         */</span>
+        <span class="kt">uint32_t</span> <span class="n">read_register</span><span class="p">(</span><span class="kt">int</span> <span class="n">uio_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">mmap_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">offset</span><span class="p">);</span>
+
+        <span class="cm">/**
+         * @brief Read unsigned 32-bit register from uio device by interrupt
+         * @param uio_num uio device number
+         * @param mmap_num mmap number
+         * @param offset offset in mmap in bytes
+         * @return
+         */</span>
+        <span class="kt">uint32_t</span> <span class="n">read_register_int</span><span class="p">(</span><span class="kt">int</span> <span class="n">uio_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">mmap_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">offset</span><span class="p">);</span>
+
+        <span class="kt">void</span> <span class="n">wait_interrupt</span><span class="p">(</span><span class="kt">int</span> <span class="n">uio_num</span><span class="p">);</span>
+
+        <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">array</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">array</span><span class="o">&lt;</span><span class="n">MemoryRegion</span><span class="p">,</span> <span class="mi">100</span><span class="o">&gt;</span><span class="p">,</span> <span class="mi">100</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">get_mmap_regions</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+
+        <span class="cm">/**
+         * Enable interrupts for UIO device uio_num. It is usable for Xilinx AXI GPIO IPs only.
+         * @param uio_num
+         */</span>
+        <span class="kt">void</span> <span class="n">setup_interrupts</span><span class="p">(</span><span class="kt">int</span> <span class="n">uio_num</span><span class="p">);</span>
+
+    <span class="nl">private:</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">m_pins</span><span class="p">;</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">m_uio_fd</span><span class="p">;</span>
+        <span class="cm">/*
+        The only reason I use a fixed size std::array instead of unordered_map is that I faced with
+        some huge performance drop while reading UIO registers in a loop. Probably, it may be fixed using some custom unordered_map implementations like ankerl::unordered_map, but I decided to use fixed size arrays due to the fact that using more than 100 uio devices is a low-probability scenario.
+        */</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">array</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">array</span><span class="o">&lt;</span><span class="n">MemoryRegion</span><span class="p">,</span> <span class="mi">100</span><span class="o">&gt;</span><span class="p">,</span> <span class="mi">100</span><span class="o">&gt;</span> <span class="n">m_mmap_regions</span><span class="p">;</span>
+    <span class="p">};</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>UIODriver.cpp</p>
+<div class="language-c++ highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+</pre></td><td class="rouge-code"><pre><span class="cp">#include &lt;unistd.h&gt;
+#include &lt;utility&gt;
+</span>
+<span class="cp">#include "UIODriver.hpp"
+</span>
+<span class="k">using</span> <span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">;</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">entries</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">path</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">entries</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span> <span class="o">&amp;</span><span class="n">entry</span> <span class="o">:</span> <span class="n">std</span><span class="o">::</span><span class="n">filesystem</span><span class="o">::</span><span class="n">directory_iterator</span><span class="p">(</span><span class="n">path</span><span class="p">))</span> <span class="p">{</span>
+        <span class="n">entries</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">entry</span><span class="p">.</span><span class="n">path</span><span class="p">());</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">entries</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">size_t</span> <span class="nf">read_hex</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">path</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">stringstream</span> <span class="n">buffer</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">ifstream</span> <span class="n">file</span><span class="p">(</span><span class="n">path</span><span class="p">);</span>
+    <span class="n">buffer</span> <span class="o">&lt;&lt;</span> <span class="n">file</span><span class="p">.</span><span class="n">rdbuf</span><span class="p">();</span>
+
+    <span class="kt">size_t</span> <span class="n">val</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">stoul</span><span class="p">(</span><span class="n">buffer</span><span class="p">.</span><span class="n">str</span><span class="p">(),</span> <span class="nb">nullptr</span><span class="p">,</span> <span class="mi">16</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">val</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="n">UIODriver</span><span class="o">::</span><span class="n">init</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">pins</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">m_pins</span> <span class="o">=</span> <span class="n">pins</span><span class="p">;</span>
+    <span class="n">m_uio_fd</span><span class="p">.</span><span class="n">resize</span><span class="p">(</span><span class="n">m_pins</span><span class="p">.</span><span class="n">size</span><span class="p">());</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">fill</span><span class="p">(</span><span class="n">m_uio_fd</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">m_uio_fd</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+    <span class="c1">// Open devices</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">m_pins</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">device_path</span> <span class="o">=</span> <span class="s">"/dev/uio"</span> <span class="o">+</span> <span class="n">std</span><span class="o">::</span><span class="n">to_string</span><span class="p">(</span><span class="n">m_pins</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+        <span class="n">m_uio_fd</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="n">device_path</span><span class="p">.</span><span class="n">c_str</span><span class="p">(),</span> <span class="n">O_RDWR</span> <span class="o">|</span> <span class="n">O_SYNC</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">m_uio_fd</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">"UIODriver. Failed to open uio device: "</span><span class="p">,</span> <span class="n">device_path</span><span class="p">);</span>
+            <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="c1">// Iterate over devices</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">m_pins</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">mmap_dir</span> <span class="o">=</span> <span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">"/sys/class/uio/uio{}/maps"</span><span class="p">,</span> <span class="n">m_pins</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">mmaps_dirs</span> <span class="o">=</span> <span class="n">entries</span><span class="p">(</span><span class="n">mmap_dir</span><span class="p">);</span>
+        <span class="c1">// Iterate over memory regions</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">mmaps_dirs</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="o">++</span><span class="n">j</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">mmap_size_file</span> <span class="o">=</span>
+                <span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">"/sys/class/uio/uio{}/maps/map{}/size"</span><span class="p">,</span> <span class="n">m_pins</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">j</span><span class="p">);</span>
+            <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">mmap_addr_file</span> <span class="o">=</span>
+                <span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">"/sys/class/uio/uio{}/maps/map{}/addr"</span><span class="p">,</span> <span class="n">m_pins</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">j</span><span class="p">);</span>
+            <span class="kt">size_t</span> <span class="n">mmap_size</span> <span class="o">=</span> <span class="n">read_hex</span><span class="p">(</span><span class="n">mmap_size_file</span><span class="p">);</span>
+            <span class="kt">size_t</span> <span class="n">mmap_addr</span> <span class="o">=</span> <span class="n">read_hex</span><span class="p">(</span><span class="n">mmap_addr_file</span><span class="p">);</span>
+            <span class="n">m_mmap_regions</span><span class="p">[</span><span class="n">m_pins</span><span class="p">[</span><span class="n">i</span><span class="p">]][</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span>
+                <span class="n">MemoryRegion</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">m_pins</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">mmap_size</span><span class="p">,</span> <span class="n">mmap_addr</span><span class="p">,</span> <span class="n">m_uio_fd</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+            <span class="n">m_mmap_regions</span><span class="p">[</span><span class="n">m_pins</span><span class="p">[</span><span class="n">i</span><span class="p">]][</span><span class="n">j</span><span class="p">].</span><span class="n">mmap</span><span class="p">();</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">UIODriver</span><span class="o">::~</span><span class="n">UIODriver</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">fd</span> <span class="o">:</span> <span class="n">m_uio_fd</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fd</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+            <span class="kt">int</span> <span class="n">res</span> <span class="o">=</span> <span class="n">close</span><span class="p">(</span><span class="n">fd</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">res</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">"UIODriver. Failed to close uio device</span><span class="se">\n</span><span class="s">"</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="n">UIODriver</span><span class="o">::</span><span class="n">wait_interrupt</span><span class="p">(</span><span class="kt">int</span> <span class="n">uio_num</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">uio_num</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">uio_num</span> <span class="o">&gt;=</span> <span class="n">m_pins</span><span class="p">.</span><span class="n">size</span><span class="p">())</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">"UIODriver. Invalid pin number: "</span><span class="p">,</span> <span class="n">uio_num</span><span class="p">);</span>
+        <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">m_uio_fd</span><span class="p">[</span><span class="n">uio_num</span><span class="p">];</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">fd</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">"UIODriver. Invalid uio file descriptor: "</span><span class="p">,</span> <span class="n">fd</span><span class="p">);</span>
+        <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="n">u_long</span> <span class="n">icount</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">reenable</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">void</span> <span class="o">*&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">reenable</span><span class="p">),</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">));</span>
+    <span class="kt">int</span> <span class="n">err</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">icount</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">u_long</span><span class="p">));</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">err</span> <span class="o">!=</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">u_long</span><span class="p">))</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">"UIODriver. Failed to read from uio device: "</span><span class="p">,</span> <span class="n">fd</span><span class="p">);</span>
+        <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="c1">// Interrupt happened</span>
+<span class="p">}</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">byte</span><span class="o">&gt;</span> <span class="n">UIODriver</span><span class="o">::</span><span class="n">read_chunk</span><span class="p">(</span><span class="kt">int</span> <span class="n">uio_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">mmap_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">offset</span><span class="p">,</span> <span class="kt">int</span> <span class="n">size</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">uio_num</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">uio_num</span> <span class="o">&gt;=</span> <span class="n">m_uio_fd</span><span class="p">.</span><span class="n">size</span><span class="p">())</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">"UIODriver. Invalid uio number: "</span><span class="p">,</span> <span class="n">uio_num</span><span class="p">);</span>
+        <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">mmap_num</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">mmap_num</span> <span class="o">&gt;=</span> <span class="n">m_mmap_regions</span><span class="p">[</span><span class="n">uio_num</span><span class="p">].</span><span class="n">size</span><span class="p">())</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">"UIODriver. Invalid mmap number: "</span><span class="p">,</span> <span class="n">mmap_num</span><span class="p">);</span>
+        <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">offset</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">offset</span> <span class="o">+</span> <span class="n">size</span> <span class="o">&gt;</span> <span class="n">m_mmap_regions</span><span class="p">[</span><span class="n">uio_num</span><span class="p">][</span><span class="n">mmap_num</span><span class="p">].</span><span class="n">size</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">"UIODriver. Invalid offset: "</span><span class="p">,</span> <span class="n">offset</span><span class="p">);</span>
+        <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="c1">// End of error handling</span>
+
+    <span class="c1">// Read chunk</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">byte</span><span class="o">&gt;</span> <span class="n">chunk</span><span class="p">(</span><span class="n">size</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">memcpy</span><span class="p">(</span><span class="n">chunk</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">m_mmap_regions</span><span class="p">[</span><span class="n">uio_num</span><span class="p">][</span><span class="n">mmap_num</span><span class="p">].</span><span class="n">base_address</span> <span class="o">+</span> <span class="n">offset</span><span class="p">,</span>
+                <span class="n">size</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">chunk</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">uint32_t</span> <span class="n">UIODriver</span><span class="o">::</span><span class="n">read_register</span><span class="p">(</span><span class="kt">int</span> <span class="n">uio_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">mmap_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">offset</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="o">*</span><span class="k">reinterpret_cast</span><span class="o">&lt;</span><span class="k">const</span> <span class="k">volatile</span> <span class="kt">uint32_t</span> <span class="o">*&gt;</span><span class="p">(</span>
+        <span class="k">static_cast</span><span class="o">&lt;</span><span class="k">volatile</span> <span class="kt">unsigned</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*&gt;</span><span class="p">(</span>
+            <span class="n">m_mmap_regions</span><span class="p">[</span><span class="n">uio_num</span><span class="p">][</span><span class="n">mmap_num</span><span class="p">].</span><span class="n">base_address</span><span class="p">)</span> <span class="o">+</span>
+        <span class="n">offset</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">byte</span><span class="o">&gt;</span> <span class="n">UIODriver</span><span class="o">::</span><span class="n">read_chunk_int</span><span class="p">(</span><span class="kt">int</span> <span class="n">uio_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">mmap_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">offset</span><span class="p">,</span> <span class="kt">int</span> <span class="n">size</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">wait_interrupt</span><span class="p">(</span><span class="n">uio_num</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">read_chunk</span><span class="p">(</span><span class="n">uio_num</span><span class="p">,</span> <span class="n">mmap_num</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">size</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">uint32_t</span> <span class="n">UIODriver</span><span class="o">::</span><span class="n">read_register_int</span><span class="p">(</span><span class="kt">int</span> <span class="n">uio_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">mmap_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">offset</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">wait_interrupt</span><span class="p">(</span><span class="n">uio_num</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">read_register</span><span class="p">(</span><span class="n">uio_num</span><span class="p">,</span> <span class="n">mmap_num</span><span class="p">,</span> <span class="n">offset</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="n">UIODriver</span><span class="o">::</span><span class="n">write_register</span><span class="p">(</span><span class="kt">int</span> <span class="n">uio_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">mmap_num</span><span class="p">,</span> <span class="kt">int</span> <span class="n">offset</span><span class="p">,</span> <span class="kt">uint32_t</span> <span class="n">value</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">mmap_num</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">mmap_num</span> <span class="o">&gt;=</span> <span class="n">m_mmap_regions</span><span class="p">[</span><span class="n">uio_num</span><span class="p">].</span><span class="n">size</span><span class="p">())</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">"UIODriver. Invalid mmap number: "</span><span class="p">,</span> <span class="n">mmap_num</span><span class="p">);</span>
+
+        <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">offset</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">offset</span> <span class="o">+</span> <span class="mi">4</span> <span class="o">&gt;</span> <span class="n">m_mmap_regions</span><span class="p">[</span><span class="n">uio_num</span><span class="p">][</span><span class="n">mmap_num</span><span class="p">].</span><span class="n">size</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">"UIODriver. Invalid offset: "</span><span class="p">,</span> <span class="n">offset</span><span class="p">);</span>
+
+        <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="o">*</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="o">*</span><span class="p">)((</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">m_mmap_regions</span><span class="p">[</span><span class="n">uio_num</span><span class="p">][</span><span class="n">mmap_num</span><span class="p">].</span><span class="n">base_address</span> <span class="o">+</span> <span class="n">offset</span><span class="p">)</span> <span class="o">=</span> <span class="n">value</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">array</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">array</span><span class="o">&lt;</span><span class="n">MemoryRegion</span><span class="p">,</span> <span class="mi">100</span><span class="o">&gt;</span><span class="p">,</span> <span class="mi">100</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">UIODriver</span><span class="o">::</span><span class="n">get_mmap_regions</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">m_mmap_regions</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">UIODriver</span><span class="o">::</span><span class="n">UIODriver</span><span class="p">()</span> <span class="p">{}</span>
+
+<span class="kt">void</span> <span class="n">UIODriver</span><span class="o">::</span><span class="n">setup_interrupts</span><span class="p">(</span><span class="kt">int</span> <span class="n">uio_num</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">uio</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">find</span><span class="p">(</span><span class="n">m_pins</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">m_pins</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="n">uio_num</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">uio</span> <span class="o">==</span> <span class="n">m_pins</span><span class="p">.</span><span class="n">cend</span><span class="p">())</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">err</span> <span class="o">=</span> <span class="n">format</span><span class="p">(</span><span class="s">"UIO with num {} can't be found to setup interrupts"</span><span class="p">,</span> <span class="n">uio_num</span><span class="p">);</span>
+        <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="n">err</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="c1">// Take 0th mmap region</span>
+    <span class="k">auto</span> <span class="n">mem_region</span> <span class="o">=</span> <span class="n">m_mmap_regions</span><span class="p">[</span><span class="n">uio_num</span><span class="p">][</span><span class="mi">0</span><span class="p">];</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">mem_region</span><span class="p">.</span><span class="n">base_address</span> <span class="o">==</span> <span class="nb">nullptr</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">err</span> <span class="o">=</span> <span class="n">format</span><span class="p">(</span><span class="s">"Mmap region 0 of {} uio device isn't set up"</span><span class="p">,</span> <span class="n">uio_num</span><span class="p">);</span>
+        <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="n">err</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="c1">// Enable gpio interrupts</span>
+    <span class="n">write_register</span><span class="p">(</span><span class="n">uio_num</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">axi_gpio_regs</span><span class="o">::</span><span class="n">tri_offset</span><span class="p">,</span> <span class="mh">0xffffffff</span><span class="p">);</span>
+    <span class="n">write_register</span><span class="p">(</span><span class="n">uio_num</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">axi_gpio_regs</span><span class="o">::</span><span class="n">irq_control_offset</span><span class="p">,</span> <span class="mh">0x1</span><span class="p">);</span>
+    <span class="n">write_register</span><span class="p">(</span><span class="n">uio_num</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">axi_gpio_regs</span><span class="o">::</span><span class="n">global_irq_offset</span><span class="p">,</span> <span class="mh">0x80000000</span><span class="p">);</span>
+    <span class="c1">// write_register(uio_num, 0, axi_gpio_regs::irq_status_offset, 0x1);</span>
+    <span class="kt">int</span> <span class="n">reenable</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">m_uio_fd</span><span class="p">[</span><span class="n">uio_num</span><span class="p">],</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">void</span> <span class="o">*&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">reenable</span><span class="p">),</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">));</span>
+<span class="p">}</span>
+
+<span class="n">MemoryRegion</span><span class="o">::</span><span class="n">MemoryRegion</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">num</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">uio_num</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">size</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">addr</span><span class="p">,</span> <span class="kt">int</span> <span class="n">uio_fd</span><span class="p">)</span>
+    <span class="o">:</span> <span class="n">size</span><span class="p">(</span><span class="n">size</span><span class="p">),</span> <span class="n">addr</span><span class="p">(</span><span class="n">addr</span><span class="p">),</span> <span class="n">uio_fd</span><span class="p">(</span><span class="n">uio_fd</span><span class="p">),</span> <span class="n">base_address</span><span class="p">(</span><span class="nb">nullptr</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">"/sys/class/uio/uio{}/maps/map{}"</span><span class="p">,</span> <span class="n">uio_num</span><span class="p">,</span> <span class="n">num</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">MemoryRegion</span><span class="o">::</span><span class="n">MemoryRegion</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">num</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">uio_num</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">size</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">addr</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">uio_fd</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">base_address</span> <span class="o">=</span> <span class="nb">nullptr</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="n">MemoryRegion</span><span class="o">::</span><span class="n">mmap</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">addr</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="k">return</span><span class="p">;</span>
+
+    <span class="n">base_address</span> <span class="o">=</span> <span class="o">::</span><span class="n">mmap</span><span class="p">(</span><span class="nb">nullptr</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">PROT_READ</span> <span class="o">|</span> <span class="n">PROT_WRITE</span><span class="p">,</span> <span class="n">MAP_SHARED</span><span class="p">,</span> <span class="n">uio_fd</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">base_address</span> <span class="o">==</span> <span class="n">MAP_FAILED</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">"UIODriver. Failed to mmap: "</span><span class="p">,</span> <span class="n">addr</span><span class="p">);</span>
+        <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="n">MemoryRegion</span><span class="o">::</span><span class="n">unmmap</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">base_address</span> <span class="o">==</span> <span class="nb">nullptr</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="kt">int</span> <span class="n">res</span> <span class="o">=</span> <span class="n">munmap</span><span class="p">(</span><span class="n">base_address</span><span class="p">,</span> <span class="n">size</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">res</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">msg</span> <span class="o">=</span>
+            <span class="n">fmt</span><span class="o">::</span><span class="n">format</span><span class="p">(</span><span class="s">"UIODriver. Failed to unmap: {}. Errno str: {}</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">strerror</span><span class="p">(</span><span class="n">errno</span><span class="p">));</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="n">msg</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">MemoryRegion</span><span class="o">::~</span><span class="n">MemoryRegion</span><span class="p">()</span> <span class="p">{</span> <span class="n">unmmap</span><span class="p">();</span> <span class="p">}</span>
+
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h1 id="axi-gpio-interrupts">AXI GPIO Interrupts</h1>
+<p>It’s important to know that if you want to use interrupts, it’s much easier to use axi_gpio elements on the PL side. Otherwise, you will need to implement your own interrupt handler. In the case of axi_gpio, the whole interrupt logic is hidden inside the PL element axi_gpio and implemented by Xilinx.
+AXI_GPIO uses the following registers to control interrupts:
+<img src="/assets/zynq/AXI_GPIO.jpg" alt="" /></p>
+
+<p>In order to use interrupts, you must configure them via these registers on the Linux side. The following steps should be taken:</p>
+<ol>
+  <li>Enable GPIO channels and their interrupt registers. You can enable for the first, second, or both:
+    <ol>
+      <li>Configure your gpio as input or output:
+        <div class="language-c++ highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre> <span class="n">write_register</span><span class="p">(</span><span class="n">uio_num</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">axi_gpio_regs</span><span class="o">::</span><span class="n">tri_offset</span><span class="p">,</span> <span class="mh">0xffffffff</span><span class="p">);</span>
+</pre></td></tr></tbody></table></code></pre></div>        </div>
+      </li>
+      <li>For first chanell:
+        <div class="language-c++ highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre> <span class="n">write_register</span><span class="p">(</span><span class="n">uio_num</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">axi_gpio_regs</span><span class="o">::</span><span class="n">irq_control_offset</span><span class="p">,</span> <span class="mh">0x1</span><span class="p">);</span>
+</pre></td></tr></tbody></table></code></pre></div>        </div>
+      </li>
+      <li>For second channel:
+        <div class="language-c++ highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre> <span class="n">write_register</span><span class="p">(</span><span class="n">uio_num</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">axi_gpio_regs</span><span class="o">::</span><span class="n">irq_control_offset</span><span class="p">,</span> <span class="mh">0x2</span><span class="p">);</span>
+</pre></td></tr></tbody></table></code></pre></div>        </div>
+      </li>
+      <li>For both:
+        <div class="language-c++ highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre> <span class="n">write_register</span><span class="p">(</span><span class="n">uio_num</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">axi_gpio_regs</span><span class="o">::</span><span class="n">irq_control_offset</span><span class="p">,</span> <span class="mh">0x3</span><span class="p">);</span>
+</pre></td></tr></tbody></table></code></pre></div>        </div>
+        <p>As you can see, you can control interrupts in AXI_GPIO via IP Interrupt Enable Register (IP IER).</p>
+      </li>
+    </ol>
+  </li>
+  <li>Enable Global Interrupts via Global Interrupt Register:
+    <div class="language-c++ highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre> <span class="n">write_register</span><span class="p">(</span><span class="n">uio_num</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">axi_gpio_regs</span><span class="o">::</span><span class="n">global_irq_offset</span><span class="p">,</span> <span class="mh">0x80000000</span><span class="p">);</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+  </li>
+</ol>
+
+<p>After the provided steps, you’ll be able to read (or write) your AXI_GPIO devices with interrupts. Be warned that the provided offsets and registers are actual only for the AXI_GPIO Xilinx IP block. To use interrupts with custom devices, you should write your own interrupt handlers.</p>
+<h1 id="linux-realtime-capabilities">Linux realtime capabilities</h1>
+<p>There are different methods to achieve low latency on Linux systems. Among them:</p>
+<ul>
+  <li>Using low-latency kernel. This option enabled by default in a xilinx linux kernel;</li>
+  <li>Using a PREEMPT_RT kernel patch;</li>
+  <li>Using a Ubuntu Realtime Kernel (uses PREEMPT_RT inside).</li>
+</ul>
+
+<p>The most appropriate way to take advantage of the real-time kernel in Petalinux is to use the PREEMPT_RT patch directly. Due to its nature, this patch requires rewrtiting a huge number of drivers. Therefore, there is no guarantee that it will work in every particular case, use it with precaution. But, to be honest, I haven’t faced any issues yet. To apply the PREEMT_RT patch to the xilinx Linux kernel, you should follow the instructions: https://xilinx-wiki.atlassian.net/wiki/spaces/A/pages/18842435/Real-Time+Linux. Be aware that you must use the same kernel version as the version the patch is intended for.</p>
+
+<p>To demonstrate the effect of applying the PREEMPT_RT patch to the kernel, I will use a hardware signal generator that produces a sawtooth signal with a frequency of 989 kHz. Firstly, I will demonstrate the process of reading the signal on a vanila kernel, then of the kernel with the PREEMPT_RT patch applied. The signal just increments a register starting from 0 to 1002 and starts this process again.</p>
+
+<p>The signal plot on a vanila kernel (low-latency enabled):
+<img src="/assets/zynq/zynq.png" alt="" /></p>
+
+<p>The signal plot on a PREEMPT_RT patched kernel:
+<img src="/assets/zynq/ZynqRealtime.png" alt="" /></p>
+
+<p>The main difference is hidden in the signal drops that you may find on the first plot. The responsibility for such drops lies on the Linux kernel scheduler, which sometimes does not switch context fast enough to prevent a signal loss. In the case of real-time mode, user processes have a determenistic response time because, in real-time mode, any code can block any other code from accessing resources. It makes a system more responsible, though it may harm to throughtput in some cases.</p>
+
+<p>In my particular case, the preemption patch hasn’t improved the latency, but it has improved stability and made the latency more predictable. As you can see on the second plot, there are no huge gaps caused by the Linux scheduler.</p>
+
+<h1 id="useful-resources">Useful resources</h1>
+<ol>
+  <li>Understanding kernel preemption modes: <a href="https://devarea.com/understanding-linux-kernel-preemption/">https://devarea.com/understanding-linux-kernel-preemption/</a>;</li>
+  <li>AXIO GPIO documentation: <a href="https://docs.xilinx.com/v/u/en-US/pg144-axi-gpio">https://docs.xilinx.com/v/u/en-US/pg144-axi-gpio</a>;</li>
+  <li>The article series about UIO: <a href="https://www.linkedin.com/pulse/gpio-petalinux-part-1-roy-messinger">https://www.linkedin.com/pulse/gpio-petalinux-part-1-roy-messinger</a>;</li>
+  <li>The perfect forum discussion about using UIO with interrupts. You may find there many useful examples: <a href="https://forum.digilent.com/topic/4750-how-to-detect-and-handle-uio-interrupt/">https://forum.digilent.com/topic/4750-how-to-detect-and-handle-uio-interrupt/</a>.</li>
+</ol>
+
+    </div><div class="share-page">
+    Share this on &rarr;
+    <a href="https://twitter.com/intent/tweet?text=Realtime Linux Patch and UIO subsystem on Zynq 7000 - the Linux compatible FPGA platform&url=http://localhost:4000/2023/11/13/2023-zynq-platform.html&via=jekyllrb&related=jekyllrb"
+        rel="nofollow" target="_blank" title="Share on Twitter">Twitter</a>
+    <a href="https://facebook.com/sharer.php?u=http://localhost:4000/2023/11/13/2023-zynq-platform.html" rel="nofollow" target="_blank"
+        title="Share on Facebook">Facebook</a>
+    <a href="https://plus.google.com/share?url=http://localhost:4000/2023/11/13/2023-zynq-platform.html" rel="nofollow" target="_blank"
+        title="Share on Google+">Google+</a>
+    <a href="https://reddit.com/submit?url={ site.url }}/2023/11/13/2023-zynq-platform.html" rel="nofollow" target="_blank"
+        title="Share on Reddit">Reddit</a>
+</div><a class="u-url" href="/2023/11/13/2023-zynq-platform.html" hidden></a>
+</article>
+    </section>
+  </article>
+</div>
+
+    </div>
+
+    
+
+    <div id="footer" class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+
+<!-- end custom footer snippets -->
+        <div class="page__footer-follow">
+  <ul class="social-icons">
+    
+
+    
+
+    
+      <li><a href="/feed.xml"><i class="fas fa-fw fa-rss-square" aria-hidden="true"></i> Feed</a></li>
+    
+  </ul>
+</div>
+
+<div class="page__footer-copyright">&copy; 2023 Beware of Ohkvuck Aykseel. Powered by <a href="https://jekyllrb.com" rel="nofollow">Jekyll</a> &amp; <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">Minimal Mistakes</a>.</div>
+
+      </footer>
+    </div>
+
+    
+  <script src="/assets/js/main.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+  </body>
+</html>

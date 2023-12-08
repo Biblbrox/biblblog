@@ -10,4 +10,10 @@ var store = [{
         "tags": [],
         "url": "/2023/10/03/DDS-discovery-tool-for-ROS2-ecosystem.html",
         "teaser": null
+      },{
+        "title": "Realtime Linux Patch and UIO subsystem on Zynq 7000 - the Linux compatible FPGA platform",
+        "excerpt":"Author - Kuchkov Aleksey Introduction FPGA based systems have great advantages over standard PS-only platforms in terms of flexibility and availabilities. Someone can implement the entire CPU on that without any additional hardwired PCB. Any FPGA has the main parameter that determines its power, named LUT (Lookup Tables). These are...","categories": [],
+        "tags": [],
+        "url": "/2023/11/13/2023-zynq-platform.html",
+        "teaser": null
       }]

@@ -28,10 +28,10 @@ layout: archive
         {{ post.excerpt }}
         {%- endif -%}
         {%- if post.image -%}
-        <img src="{{- post.image | relative_url -}}" alt="" style="height:256px;">
+        <img src="{{- post.image | relative_url -}}" alt="" style="height:256px;" class="center">
         {%- else -%}
         {%- assign postImage = "/assets/placeholder.png" -%}
-        <img src="{{- postImage | relative_url -}}" alt="" style="height:256px;">
+        <img src="{{- postImage | relative_url -}}" alt="" style="height:256px;" class="center">
         {%- endif -%}
     </li>
     {%- endfor -%} 

@@ -1,0 +1,31 @@
+email:
+  id: 'biblbroxxx@gmail.com'
+  href: 'mailto:'
+  title: 'Email'
+  fa-icon: 'fa-envelope-square'
+
+facebook:
+  id: ''
+  href: 'https://www.facebook.com/'
+  title: 'Facebook'
+  fa-icon: 'fa-facebook-square'
+
+#twitter:
+#  id: 'your-twitter-name'
+#  href: 'https://www.twitter.com/'
+#  title: 'Twitter'
+#  fa-icon: 'fa-twitter-square'
+
+github:
+  id: 'Biblbrox'
+  href: 'https://github.com/'
+  title: 'GitHub'
+  fa-icon: 'fa-github-square'
+
+
+reddit:
+  id: 'Biblbrox'
+  href: 'https://reddit.com/'
+  title: 'Reddit'
+  fa-icon: 'fa-reddit-square'
+

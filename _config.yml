@@ -38,6 +38,9 @@ plugins:
   - jekyll-feed
   - jekyll-include-cache
 
+sass:
+  sass_dir:           _sass
+  style:              compressed
 # Exclude from processing.
 # The following items will not be processed, by default.
 # Any item listed under the `exclude:` key here will be automatically added to
@@ -68,6 +71,9 @@ gist:
 kramdown:
   math_engine: mathjax
   syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    block:
+      line_numbers: true
 
 
 ############################################################
